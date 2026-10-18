@@ -1,0 +1,6 @@
+{
+  "name": "Invox SaaS - Enterprise Multi-Tenant Invoicing Platform",
+  "description": "Advanced multi-tenant invoicing SaaS with custom branding, Stripe & Visa subscription management, RBAC, OAuth 2.0 API gateway, audit logs, and low-latency caching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
