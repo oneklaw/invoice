@@ -13,6 +13,7 @@ export interface Translations {
   apiSecurity: string;
   auditLogs: string;
   cachePerformance: string;
+  emailNotifications: string;
   // Roles
   superAdmin: string;
   orgAdmin: string;
@@ -82,6 +83,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     apiSecurity: "API & OAuth 2.0",
     auditLogs: "Audit Trail",
     cachePerformance: "Cache & Latency",
+    emailNotifications: "Email Outbox & Alerts",
     superAdmin: "Super Admin",
     orgAdmin: "Org Admin",
     billingManager: "Billing Manager",
@@ -144,6 +146,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     apiSecurity: "API y OAuth 2.0",
     auditLogs: "Registro de Auditoría",
     cachePerformance: "Caché y Rendimiento",
+    emailNotifications: "Notificaciones por Email",
     superAdmin: "Super Administrador",
     orgAdmin: "Administrador de Org",
     billingManager: "Gerente de Facturación",
@@ -206,6 +209,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     apiSecurity: "Sécurité API & OAuth 2.0",
     auditLogs: "Journal d'Audit",
     cachePerformance: "Cache & Latence",
+    emailNotifications: "Notifications par E-mail",
     superAdmin: "Super Admin",
     orgAdmin: "Admin d'Organisation",
     billingManager: "Responsable Facturation",
@@ -268,6 +272,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     apiSecurity: "API & OAuth 2.0",
     auditLogs: "Audit-Protokoll",
     cachePerformance: "Cache & Leistung",
+    emailNotifications: "E-Mail-Benachrichtigungen",
     superAdmin: "Super Admin",
     orgAdmin: "Organisations-Admin",
     billingManager: "Rechnungs-Manager",
@@ -330,6 +335,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     apiSecurity: "APIとOAuth 2.0",
     auditLogs: "監査ログ",
     cachePerformance: "キャッシュと応答速度",
+    emailNotifications: "自動メール通知",
     superAdmin: "特権管理者 (Super Admin)",
     orgAdmin: "組織管理者 (Org Admin)",
     billingManager: "請求管理者 (Billing)",
@@ -392,6 +398,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     apiSecurity: "واجهة البرمجة و OAuth 2.0",
     auditLogs: "سجل التدقيق والمراقبة",
     cachePerformance: "الذاكرة المخبئية والأداء",
+    emailNotifications: "إشعارات البريد الإلكتروني",
     superAdmin: "مشرف عام",
     orgAdmin: "مدير المؤسسة",
     billingManager: "مسؤول الفوترة",
@@ -454,6 +461,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     apiSecurity: "Usalama wa API na OAuth 2.0",
     auditLogs: "Kumbukumbu za Ukaguzi",
     cachePerformance: "Kasi na Kumbukumbu Akiba",
+    emailNotifications: "Arifa za Barua Pepe",
     superAdmin: "Msimamizi Mkuu",
     orgAdmin: "Msimamizi wa Shirika",
     billingManager: "Meneja wa Malipo",

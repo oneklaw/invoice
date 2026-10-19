@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Save, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, Save, Sparkles, AlertCircle, ArrowLeftRight } from 'lucide-react';
 import { Client, Invoice, InvoiceItem, OrganizationSettings, User } from '../../types';
 import { storageService } from '../../services/storage';
+import { CurrencySelect } from '../currency/CurrencySelect';
+import { currencyService } from '../../services/currencyService';
 
 interface InvoiceEditorProps {
   isOpen: boolean;
@@ -57,6 +59,8 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   );
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [previewCurrency, setPreviewCurrency] = useState<string>(currency === 'USD' ? 'EUR' : 'USD');
+  const [showFxPreview, setShowFxPreview] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -234,20 +238,11 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
               />
             </div>
             <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Currency</label>
-              <select
+              <CurrencySelect
+                label="Currency"
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-              >
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
-                <option value="JPY">JPY (¥)</option>
-                <option value="CAD">CAD ($)</option>
-                <option value="AUD">AUD ($)</option>
-                <option value="KES">KES (KSh)</option>
-              </select>
+                onChange={setCurrency}
+              />
             </div>
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">Issue Date</label>
@@ -448,6 +443,47 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
               <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-slate-800">
                 <span>Grand Total:</span>
                 <span className="font-mono text-indigo-400 tabular-nums">{currency} {grandTotal.toFixed(2)}</span>
+              </div>
+
+              {/* Currency Conversion Preview */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setShowFxPreview(!showFxPreview)}
+                  className="w-full flex items-center justify-between text-[11px] text-slate-400 hover:text-indigo-300 transition-colors py-0.5"
+                >
+                  <span className="flex items-center gap-1">
+                    <ArrowLeftRight className="w-3 h-3 text-indigo-400" />
+                    <span>Currency Conversion Preview</span>
+                  </span>
+                  <span className="text-[10px] text-indigo-400 font-mono">
+                    {showFxPreview ? 'Hide' : 'Show Equivalent'}
+                  </span>
+                </button>
+
+                {showFxPreview && (
+                  <div className="mt-2 p-2.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2 animate-in fade-in">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-slate-400">Equivalent in:</span>
+                      <div className="w-40">
+                        <CurrencySelect
+                          value={previewCurrency}
+                          onChange={setPreviewCurrency}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-mono font-bold text-emerald-400 pt-1.5 border-t border-slate-800">
+                      <span className="text-slate-400 font-sans font-normal text-[11px]">Converted:</span>
+                      <span>
+                        {currencyService.getCurrency(previewCurrency).symbol}{' '}
+                        {currencyService.convertAmount(grandTotal, currency, previewCurrency).toLocaleString(undefined, { minimumFractionDigits: 2 })} {previewCurrency}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 text-right">
+                      1 {currency} = {currencyService.getExchangeRate(currency, previewCurrency).toFixed(4)} {previewCurrency}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

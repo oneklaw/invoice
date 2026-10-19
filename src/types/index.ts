@@ -10,6 +10,7 @@ export interface User {
   role: UserRole;
   organizationId: string;
   createdAt: string;
+  lastActive?: string;
 }
 
 export interface BankAccountDetails {
@@ -58,6 +59,14 @@ export interface OrganizationSettings {
   invoiceTermsAndConditions: string;
   bankDetails: BankAccountDetails;
   paymentGateways: PaymentGateways;
+  emailSettings?: {
+    autoSendOnInvoiceCreation: boolean;
+    autoSendOnPaymentReceived: boolean;
+    autoSendOnOverdue: boolean;
+    senderDisplayName: string;
+    replyToEmail: string;
+    customFooterNote?: string;
+  };
   invoiceTheme: InvoiceTheme;
   accentColor: InvoiceAccentColor;
   plan: 'free' | 'pro';
@@ -152,8 +161,10 @@ export interface AuditLog {
     | 'API_KEY_CREATED' 
     | 'API_TOKEN_GENERATED' 
     | 'CACHE_PURGED'
-    | 'RATE_LIMIT_EXCEEDED';
-  resourceType: 'invoice' | 'user' | 'organization' | 'subscription' | 'api' | 'cache';
+    | 'RATE_LIMIT_EXCEEDED'
+    | 'EMAIL_DISPATCHED'
+    | 'DATA_EXPORTED';
+  resourceType: 'invoice' | 'user' | 'organization' | 'subscription' | 'api' | 'cache' | 'email' | 'report';
   resourceId?: string;
   ipAddress: string;
   status: 'success' | 'warning' | 'error';
@@ -200,4 +211,26 @@ export interface CacheMetrics {
   avgDbLatencyMs: number;
   storedKeys: number;
   totalSizeBytes: number;
+}
+
+export type EmailNotificationType = 'invoice_generated' | 'payment_received' | 'payment_reminder' | 'invoice_voided';
+export type EmailDeliveryStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced';
+
+export interface EmailNotification {
+  id: string;
+  organizationId: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  type: EmailNotificationType;
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  previewText: string;
+  bodyHtml: string;
+  sentAt: string;
+  status: EmailDeliveryStatus;
+  openedAt?: string;
+  clickedAt?: string;
+  paymentUrl?: string;
+  deliveredVia: string;
 }

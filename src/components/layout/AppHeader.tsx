@@ -1,7 +1,9 @@
 import React from 'react';
-import { Plus, Globe, Building2, ShieldCheck, ChevronDown, Check } from 'lucide-react';
-import { OrganizationSettings, SupportedLanguage, User } from '../../types';
+import { Plus, Globe, Building2, ShieldCheck, ChevronDown, Check, LogOut, ArrowLeftRight } from 'lucide-react';
+import { Client, Invoice, OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
+import { GlobalSearchBar } from '../search/GlobalSearchBar';
+import { currencyService } from '../../services/currencyService';
 
 interface AppHeaderProps {
   currentOrg: OrganizationSettings;
@@ -9,12 +11,18 @@ interface AppHeaderProps {
   currentUser: User;
   allUsers: User[];
   currentLang: SupportedLanguage;
+  invoices: Invoice[];
+  clients: Client[];
   onSelectOrg: (orgId: string) => void;
   onSelectUser: (userId: string) => void;
   onSelectLang: (lang: SupportedLanguage) => void;
   onOpenNewInvoice: () => void;
+  onLogout: () => void;
+  onSelectInvoice: (invoiceId: string) => void;
+  onSelectClient: (clientId: string) => void;
   activeTab: string;
   onSelectTab: (tab: string) => void;
+  onOpenCurrencyConverter?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -23,12 +31,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   currentUser,
   allUsers,
   currentLang,
+  invoices,
+  clients,
   onSelectOrg,
   onSelectUser,
   onSelectLang,
   onOpenNewInvoice,
+  onLogout,
+  onSelectInvoice,
+  onSelectClient,
   activeTab,
   onSelectTab,
+  onOpenCurrencyConverter,
 }) => {
   const t = translations[currentLang];
   const [showOrgMenu, setShowOrgMenu] = React.useState(false);
@@ -104,8 +118,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
 
+      {/* Global Full-Text Indexed Search Bar */}
+      <GlobalSearchBar
+        invoices={invoices}
+        clients={clients}
+        orgId={currentOrg.id}
+        onSelectInvoice={onSelectInvoice}
+        onSelectClient={onSelectClient}
+      />
+
       {/* Zone 2: 4-5 clean single-line nav links with hover underlines */}
-      <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-400">
+      <nav className="hidden xl:flex items-center gap-6 text-sm font-medium text-slate-400">
         <button
           onClick={() => onSelectTab('dashboard')}
           className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
@@ -149,7 +172,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       </nav>
 
       {/* Zone 3: Primary Action + Controls */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
+        {/* World Currencies & FX Rates */}
+        {onOpenCurrencyConverter && (
+          <button
+            onClick={onOpenCurrencyConverter}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors group"
+            title="World Currency Converter & Live FX Rates"
+          >
+            <span className="text-sm">{currencyService.getCurrency(currentOrg.currency).flag}</span>
+            <span className="font-mono text-indigo-400 font-bold text-[11px]">{currentOrg.currency}</span>
+            <span className="text-[10px] text-slate-400 font-medium hidden xl:inline">FX Rates</span>
+          </button>
+        )}
+
         {/* Language selector */}
         <div className="relative">
           <button
@@ -227,6 +263,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   {u.id === currentUser.id && <Check className="w-4 h-4 text-indigo-400 shrink-0 ml-2" />}
                 </button>
               ))}
+              <div className="pt-1 mt-1 border-t border-slate-800">
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    onLogout();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Lock Session & Sign Out</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -238,6 +286,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         >
           <Plus className="w-3.5 h-3.5" />
           <span>{t.newInvoice}</span>
+        </button>
+
+        {/* Quick Lock Button */}
+        <button
+          onClick={onLogout}
+          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors shrink-0"
+          title="Lock Session / Sign Out"
+        >
+          <LogOut className="w-4 h-4" />
         </button>
       </div>
     </header>

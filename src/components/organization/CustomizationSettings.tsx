@@ -11,9 +11,15 @@ import {
   Palette,
   Shield,
   Trash2,
+  ArrowLeftRight,
+  Globe,
+  Sparkles,
 } from 'lucide-react';
 import { InvoiceAccentColor, InvoiceTheme, OrganizationSettings, User } from '../../types';
 import { storageService } from '../../services/storage';
+import { CurrencySelect } from '../currency/CurrencySelect';
+import { CompanyCurrencyConversionModal } from '../currency/CompanyCurrencyConversionModal';
+import { currencyService } from '../../services/currencyService';
 
 interface CustomizationSettingsProps {
   org: OrganizationSettings;
@@ -28,9 +34,23 @@ export const CustomizationSettings: React.FC<CustomizationSettingsProps> = ({
 }) => {
   const [formData, setFormData] = useState<OrganizationSettings>(org);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [pendingTargetCurrency, setPendingTargetCurrency] = useState<string | undefined>(undefined);
 
   // Role permissions: Only org_admin or super_admin can alter organization branding & banking
   const canManage = ['super_admin', 'org_admin'].includes(currentUser.role);
+
+  const handleCurrencySelect = (newCode: string) => {
+    if (newCode !== formData.currency) {
+      setPendingTargetCurrency(newCode);
+      setShowConversionModal(true);
+    }
+  };
+
+  const handleConversionSuccess = (newCurrency: string) => {
+    setFormData((prev) => ({ ...prev, currency: newCurrency }));
+    onSaved();
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -231,21 +251,60 @@ export const CustomizationSettings: React.FC<CustomizationSettingsProps> = ({
               className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
             />
           </div>
-          <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Primary Operating Currency</label>
-            <select
-              value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-            >
-              <option value="USD">USD ($ - United States Dollar)</option>
-              <option value="EUR">EUR (€ - Euro)</option>
-              <option value="GBP">GBP (£ - British Pound)</option>
-              <option value="JPY">JPY (¥ - Japanese Yen)</option>
-              <option value="CAD">CAD ($ - Canadian Dollar)</option>
-              <option value="AUD">AUD ($ - Australian Dollar)</option>
-              <option value="KES">KES (KSh - Kenyan Shilling)</option>
-            </select>
+          <div className="md:col-span-2 p-4 bg-slate-950/70 border border-slate-800 rounded-xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <label className="block text-xs font-semibold text-white flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Primary Operating Currency</span>
+                </label>
+                <p className="text-[11px] text-slate-400">
+                  Select from all 160+ world currencies. Changing currency will prompt conversion of existing balances and FX rate adjustments.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingTargetCurrency(undefined);
+                  setShowConversionModal(true);
+                }}
+                disabled={!canManage}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold transition-colors self-start sm:self-auto disabled:opacity-50"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span>Convert Company Currency</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center pt-1">
+              <div>
+                <CurrencySelect
+                  label="Active Company Currency"
+                  value={formData.currency}
+                  onChange={handleCurrencySelect}
+                  disabled={!canManage}
+                />
+              </div>
+
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Live Benchmark</span>
+                  <span className="font-mono text-white font-bold">
+                    {currencyService.getCurrency(formData.currency).flag} 1 {formData.currency} = {currencyService.getExchangeRate(formData.currency, 'USD').toFixed(4)} USD
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingTargetCurrency(undefined);
+                    setShowConversionModal(true);
+                  }}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+                >
+                  Conversion Tool ➔
+                </button>
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-[11px] text-slate-400 mb-1">Billing Email</label>
@@ -556,6 +615,18 @@ export const CustomizationSettings: React.FC<CustomizationSettingsProps> = ({
           <span>Save Organization Customizations</span>
         </button>
       </div>
+
+      {/* Currency Conversion Modal */}
+      {showConversionModal && (
+        <CompanyCurrencyConversionModal
+          isOpen={showConversionModal}
+          onClose={() => setShowConversionModal(false)}
+          org={org}
+          currentUser={currentUser}
+          initialTargetCurrency={pendingTargetCurrency}
+          onSuccess={handleConversionSuccess}
+        />
+      )}
     </form>
   );
 };

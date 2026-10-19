@@ -11,10 +11,12 @@ import {
   Copy,
   Check,
   Plus,
+  Mail,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
 import { storageService } from '../../services/storage';
+import { emailService } from '../../services/emailService';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -245,6 +247,21 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                             <CreditCard className="w-3.5 h-3.5" />
                           </button>
                         )}
+
+                        {/* Send Automated Email */}
+                        <button
+                          onClick={() => {
+                            if (inv.status === 'paid') {
+                              emailService.notifyPaymentReceived(inv, org, inv.paymentMethodUsed || 'Credit Card (Stripe)');
+                            } else {
+                              emailService.notifyInvoiceGenerated(inv, org);
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-indigo-400 rounded hover:bg-slate-800 transition-colors"
+                          title="Send Automated Customer Email"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                        </button>
 
                         {/* Copy payment link */}
                         <button

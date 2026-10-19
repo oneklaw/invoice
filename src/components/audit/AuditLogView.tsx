@@ -37,7 +37,8 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ org }) => {
       (selectedActionFilter === 'user' && log.resourceType === 'user') ||
       (selectedActionFilter === 'billing' && log.resourceType === 'subscription') ||
       (selectedActionFilter === 'settings' && log.resourceType === 'organization') ||
-      (selectedActionFilter === 'api' && log.resourceType === 'api');
+      (selectedActionFilter === 'api' && log.resourceType === 'api') ||
+      (selectedActionFilter === 'report' && log.resourceType === 'report');
 
     return matchesSearch && matchesAction;
   });
@@ -78,7 +79,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ org }) => {
   };
 
   const getActionBadge = (action: string) => {
-    if (action.includes('CREATED') || action.includes('PAID') || action.includes('UPGRADED')) {
+    if (action.includes('CREATED') || action.includes('PAID') || action.includes('UPGRADED') || action.includes('EXPORTED')) {
       return <span className="text-emerald-400 font-mono text-[11px]">● {action}</span>;
     }
     if (action.includes('CHANGED') || action.includes('UPDATED') || action.includes('VOIDED')) {

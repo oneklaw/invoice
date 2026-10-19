@@ -9,9 +9,12 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Zap,
+  ArrowLeftRight,
+  Globe,
 } from 'lucide-react';
 import { Invoice, OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
+import { currencyService } from '../../services/currencyService';
 
 interface AnalyticsDashboardProps {
   invoices: Invoice[];
@@ -22,6 +25,8 @@ interface AnalyticsDashboardProps {
   onOpenUpgradeModal: () => void;
   onViewInvoice: (inv: Invoice) => void;
   onNavigateTab: (tab: string) => void;
+  onOpenCurrencyConversion?: () => void;
+  onOpenConverter?: () => void;
 }
 
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
@@ -33,6 +38,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   onOpenUpgradeModal,
   onViewInvoice,
   onNavigateTab,
+  onOpenCurrencyConversion,
+  onOpenConverter,
 }) => {
   const t = translations[currentLang];
   const isPro = org.plan === 'pro' && org.subscriptionStatus === 'active';
@@ -67,12 +74,42 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           <h1 className="text-2xl font-bold tracking-tight text-white">
             {org.name}
           </h1>
-          <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-            <span>Operating Currency: <strong className="text-slate-300 font-mono">{org.currency}</strong></span>
-            <span aria-hidden="true">·</span>
+          <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-400 mt-1.5">
+            <span className="flex items-center gap-1.5">
+              <span>Operating Currency:</span>
+              <strong className="text-white font-mono bg-slate-900 border border-slate-700 px-2 py-0.5 rounded flex items-center gap-1">
+                <span>{currencyService.getCurrency(org.currency).flag}</span>
+                <span>{org.currency}</span>
+                <span className="text-slate-400 font-normal">({currencyService.getCurrency(org.currency).symbol})</span>
+              </strong>
+            </span>
+
+            {onOpenCurrencyConversion && (
+              <button
+                type="button"
+                onClick={onOpenCurrencyConversion}
+                className="px-2 py-0.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded text-[11px] font-semibold transition-colors flex items-center gap-1"
+                title="Change or convert company operating currency"
+              >
+                <ArrowLeftRight className="w-3 h-3" />
+                <span>Change Currency</span>
+              </button>
+            )}
+
+            {onOpenConverter && (
+              <button
+                type="button"
+                onClick={onOpenConverter}
+                className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded text-[11px] transition-colors flex items-center gap-1"
+                title="Open World FX Rates & Currency Converter"
+              >
+                <Globe className="w-3 h-3 text-indigo-400" />
+                <span>FX Calculator</span>
+              </button>
+            )}
+
+            <span aria-hidden="true" className="text-slate-600">·</span>
             <span>Tax ID: <strong className="text-slate-300 font-mono">{org.taxId}</strong></span>
-            <span aria-hidden="true">·</span>
-            <span className="text-emerald-400">Strict Data Isolation Active</span>
           </div>
         </div>
 

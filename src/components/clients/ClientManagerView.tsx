@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Users, Plus, Mail, Building, MapPin, DollarSign, X } from 'lucide-react';
+import { Users, Plus, Mail, Building, MapPin, DollarSign, X, FileSpreadsheet } from 'lucide-react';
 import { Client, OrganizationSettings, User } from '../../types';
 import { storageService } from '../../services/storage';
+import { GoogleSheetsExportModal } from './GoogleSheetsExportModal';
 
 interface ClientManagerViewProps {
   org: OrganizationSettings;
@@ -17,6 +18,7 @@ export const ClientManagerView: React.FC<ClientManagerViewProps> = ({
   onRefresh,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -70,15 +72,26 @@ export const ClientManagerView: React.FC<ClientManagerViewProps> = ({
           </p>
         </div>
 
-        {canEdit && (
+        <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
           <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors whitespace-nowrap self-start sm:self-auto"
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-700/60 rounded-lg shadow-sm transition-colors whitespace-nowrap"
+            title="Export clients and payment history to Google Sheets"
           >
-            <Plus className="w-4 h-4" />
-            <span>Add New Client</span>
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Export to Google Sheet</span>
           </button>
-        )}
+
+          {canEdit && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Client</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -228,6 +241,15 @@ export const ClientManagerView: React.FC<ClientManagerViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Google Sheets Export Modal */}
+      <GoogleSheetsExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        org={org}
+        clients={clients}
+        currentUser={currentUser}
+      />
     </div>
   );
 };
