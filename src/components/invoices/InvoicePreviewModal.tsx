@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, Printer, CreditCard, Download, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, CreditCard, Download, ShieldCheck, UploadCloud, ExternalLink, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Invoice, OrganizationSettings } from '../../types';
+import { googleDriveService } from '../../services/googleDriveService';
 
 interface InvoicePreviewModalProps {
   isOpen: boolean;
@@ -13,11 +14,38 @@ interface InvoicePreviewModalProps {
 export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   isOpen,
   onClose,
-  invoice,
+  invoice: initialInvoice,
   org,
   onOpenPayModal,
 }) => {
+  const [currentInvoice, setCurrentInvoice] = useState<Invoice>(initialInvoice);
+  const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
+  const [driveSuccess, setDriveSuccess] = useState(false);
+
   if (!isOpen) return null;
+
+  const invoice = currentInvoice;
+
+  const handleSaveToDrive = async () => {
+    setIsUploadingToDrive(true);
+    setDriveSuccess(false);
+    try {
+      const res = await googleDriveService.uploadInvoicePdfToDrive(invoice, org);
+      setCurrentInvoice((prev) => ({
+        ...prev,
+        googleDriveFileId: res.fileId,
+        googleDriveLink: res.webViewLink,
+        googleDriveUploadedAt: new Date().toISOString(),
+      }));
+      setDriveSuccess(true);
+      setTimeout(() => setDriveSuccess(false), 4000);
+    } catch (err: any) {
+      console.error('Save to Drive error:', err);
+      alert(`Could not save to Google Drive: ${err.message || 'Error occurred'}`);
+    } finally {
+      setIsUploadingToDrive(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -97,6 +125,37 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
               <Printer className="w-3.5 h-3.5" />
               <span>Print / Save PDF</span>
             </button>
+
+            {invoice.googleDriveLink ? (
+              <a
+                href={invoice.googleDriveLink}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 rounded-lg border border-emerald-800 transition-colors"
+                title="View PDF directly in Google Drive"
+              >
+                <UploadCloud className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Drive PDF</span>
+                <ExternalLink className="w-3 h-3 text-emerald-400" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled={isUploadingToDrive}
+                onClick={handleSaveToDrive}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg border border-slate-700 transition-colors"
+                title="Save PDF copy into Google Drive designated folder"
+              >
+                {isUploadingToDrive ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                ) : driveSuccess ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <UploadCloud className="w-3.5 h-3.5 text-emerald-400" />
+                )}
+                <span>{isUploadingToDrive ? 'Saving...' : driveSuccess ? 'Saved to Drive!' : 'Save to Drive'}</span>
+              </button>
+            )}
 
             {invoice.status !== 'paid' && (
               <button

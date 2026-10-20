@@ -24,8 +24,8 @@ export const SecureLoginView: React.FC<SecureLoginViewProps> = ({ onLoginSuccess
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   
   // Login form state
-  const [email, setEmail] = useState('onekalitkenneth@gmail.com');
-  const [password, setPassword] = useState('SecurePass2026!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -252,13 +252,9 @@ export const SecureLoginView: React.FC<SecureLoginViewProps> = ({ onLoginSuccess
               </div>
 
               <div className="flex justify-between items-center text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setTwoFactorCode('749210')}
-                  className="text-indigo-400 hover:text-indigo-300 hover:underline"
-                >
-                  Use Demo OTP: 749210
-                </button>
+                <span className="text-slate-400">
+                  Verification code required
+                </span>
                 <button
                   type="button"
                   onClick={() => setPendingUser2FA(null)}
@@ -308,13 +304,6 @@ export const SecureLoginView: React.FC<SecureLoginViewProps> = ({ onLoginSuccess
                   <label className="block text-xs font-medium text-slate-300">
                     Password
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setPassword('SecurePass2026!')}
-                    className="text-[11px] text-indigo-400 hover:text-indigo-300"
-                  >
-                    Use Demo Password
-                  </button>
                 </div>
                 <div className="relative">
                   <input
@@ -528,15 +517,15 @@ export const SecureLoginView: React.FC<SecureLoginViewProps> = ({ onLoginSuccess
           <div className="flex items-center justify-center gap-3 text-[11px] text-slate-500">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>256-Bit AES</span>
+              <span>Isolated Tenant Boundary</span>
             </span>
             <span>·</span>
-            <span>Zero-Trust RBAC</span>
+            <span>256-Bit AES</span>
             <span>·</span>
-            <span>SOC 2 Type II</span>
+            <span>Zero Cross-Tenant Leakage</span>
           </div>
           <div className="text-[10px] text-slate-600">
-            Protected by Invox Real-Time Rate Limiter and Audited Session Engine
+            Every organization operates in a dedicated, independent sandbox with strict data privacy
           </div>
         </div>
       </div>

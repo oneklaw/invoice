@@ -4,6 +4,7 @@ import { Client, Invoice, InvoiceItem, OrganizationSettings, User } from '../../
 import { storageService } from '../../services/storage';
 import { CurrencySelect } from '../currency/CurrencySelect';
 import { currencyService } from '../../services/currencyService';
+import { googleDriveService } from '../../services/googleDriveService';
 
 interface InvoiceEditorProps {
   isOpen: boolean;
@@ -189,6 +190,13 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
         setErrorMessage(res.error || 'Failed to save invoice');
       }
       return;
+    }
+
+    // Google Drive Automated Pipeline: Save a copy of every generated invoice as a PDF into designated Drive folder
+    if (org.googleDriveIntegration?.enabled && org.googleDriveIntegration?.autoUploadOnInvoiceCreate) {
+      googleDriveService.uploadInvoicePdfToDrive(invoicePayload, org, currentUser).catch((err) => {
+        console.warn('Google Drive automated background pipeline note:', err);
+      });
     }
 
     onSaved();

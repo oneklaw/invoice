@@ -20,6 +20,8 @@ import { storageService } from '../../services/storage';
 import { CurrencySelect } from '../currency/CurrencySelect';
 import { CompanyCurrencyConversionModal } from '../currency/CompanyCurrencyConversionModal';
 import { currencyService } from '../../services/currencyService';
+import { GoogleDrivePipelineSettings } from './GoogleDrivePipelineSettings';
+import { CloudSqlSnapshotSettings } from '../database/CloudSqlSnapshotSettings';
 
 interface CustomizationSettingsProps {
   org: OrganizationSettings;
@@ -602,6 +604,24 @@ export const CustomizationSettings: React.FC<CustomizationSettingsProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 6. Google Drive Automated Invoice PDF Pipeline */}
+      <div className="space-y-3">
+        <GoogleDrivePipelineSettings
+          org={formData}
+          currentUser={currentUser}
+          onSaved={onSaved}
+        />
+      </div>
+
+      {/* 7. Cloud SQL Automated Daily Snapshots & Database Protection */}
+      <div className="space-y-3">
+        <CloudSqlSnapshotSettings
+          org={formData}
+          currentUser={currentUser}
+          onSaved={onSaved}
+        />
       </div>
 
       {/* Final Save Button */}

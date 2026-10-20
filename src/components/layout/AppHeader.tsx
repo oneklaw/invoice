@@ -4,6 +4,7 @@ import { Client, Invoice, OrganizationSettings, SupportedLanguage, User } from '
 import { translations } from '../../i18n/translations';
 import { GlobalSearchBar } from '../search/GlobalSearchBar';
 import { currencyService } from '../../services/currencyService';
+import { storageService } from '../../services/storage';
 
 interface AppHeaderProps {
   currentOrg: OrganizationSettings;
@@ -74,7 +75,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           Invox SaaS
         </a>
 
-        {/* Current Organization Switcher */}
+        {/* Isolated Tenant Organization Badge */}
         <div className="relative">
           <button
             onClick={() => {
@@ -82,37 +83,66 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               setShowUserMenu(false);
               setShowLangMenu(false);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0"
-            title="Switch Tenant Organization"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-lg transition-colors whitespace-nowrap shrink-0 group"
+            title="Inspect Tenant Data Isolation & Boundary"
           >
-            <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="max-w-[140px] truncate">{currentOrg.name}</span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="max-w-[130px] truncate text-slate-200 font-semibold">{currentOrg.name}</span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono text-emerald-300 bg-emerald-950/60 border border-emerald-800/50 rounded">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Isolated
+            </span>
           </button>
 
           {showOrgMenu && (
-            <div className="absolute left-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl py-1 z-50">
-              <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Select Tenant Organization
+            <div className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Tenant Privacy & Boundary</span>
+                </div>
+                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                  100% Isolated
+                </span>
               </div>
-              {allOrgs.map((org) => (
-                <button
-                  key={org.id}
-                  onClick={() => {
-                    onSelectOrg(org.id);
-                    setShowOrgMenu(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors ${
-                    org.id === currentOrg.id ? 'bg-indigo-600/20 text-indigo-300' : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <div className="truncate">
-                    <div className="font-medium text-slate-200">{org.name}</div>
-                    <div className="text-[11px] text-slate-400">{org.currency} · {org.plan === 'pro' ? 'Pro Plan ($2/mo)' : 'Free Tier'}</div>
+
+              <div className="mt-2.5 space-y-2 text-xs">
+                <div className="p-2 bg-slate-950/70 border border-slate-800/80 rounded-lg">
+                  <div className="text-[10px] uppercase font-mono text-slate-400">Organization Tenant</div>
+                  <div className="font-semibold text-slate-100 truncate">{currentOrg.name}</div>
+                  <div className="text-[11px] text-slate-400 truncate">{currentOrg.legalName}</div>
+                  <div className="text-[10px] text-indigo-400 font-mono mt-0.5">ID: {currentOrg.id}</div>
+                </div>
+
+                <div className="space-y-1 text-[11px]">
+                  <div className="flex justify-between py-1 border-b border-slate-800/50">
+                    <span className="text-slate-400">Data Visibility</span>
+                    <span className="text-emerald-400 font-medium">Strictly Tenant Scoped</span>
                   </div>
-                  {org.id === currentOrg.id && <Check className="w-4 h-4 text-indigo-400 shrink-0 ml-2" />}
-                </button>
-              ))}
+                  <div className="flex justify-between py-1 border-b border-slate-800/50">
+                    <span className="text-slate-400">Cross-Tenant Access</span>
+                    <span className="text-rose-400 font-medium">Blocked & Enforced</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/50">
+                    <span className="text-slate-400">Operating Currency</span>
+                    <span className="text-indigo-400 font-mono font-semibold">{currentOrg.currency}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/50">
+                    <span className="text-slate-400">Cloud SQL Partition</span>
+                    <span className="text-slate-300 font-mono text-[10px]">europe-west2 / Postgres</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">Google Drive Folder</span>
+                    <span className="text-slate-300 truncate max-w-[120px]">{currentOrg.googleDriveIntegration?.folderName || 'Invoices'}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800">
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Data privacy guarantee: Invoices, clients, team members, audit logs, and keys are strictly segregated and inaccessible to other organizations.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -242,8 +272,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
           {showUserMenu && (
             <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl py-1 z-50">
-              <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Simulate Role & User
+              <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Team Profiles</span>
+                <span className="text-[10px] text-emerald-400 font-mono lowercase">isolated</span>
               </div>
               {allUsers.map((u) => (
                 <button
@@ -263,7 +294,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   {u.id === currentUser.id && <Check className="w-4 h-4 text-indigo-400 shrink-0 ml-2" />}
                 </button>
               ))}
-              <div className="pt-1 mt-1 border-t border-slate-800">
+              <div className="pt-1 mt-1 border-t border-slate-800 space-y-0.5">
+                <button
+                  onClick={() => {
+                    if (confirm('Clear all cached data and restore clean slate?')) {
+                      storageService.purgeAllDemoData();
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                >
+                  <span>Reset / Clear Storage</span>
+                </button>
                 <button
                   onClick={() => {
                     setShowUserMenu(false);

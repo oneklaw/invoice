@@ -9,9 +9,10 @@ import {
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Scopes required for Google Sheets integration
+// Scopes required for Google Sheets and Google Drive integration
 export const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/drive.file',
 ];
 
 // Initialize Firebase App safely if not already initialized

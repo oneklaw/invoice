@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Core authentication check
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Resolves caller's user record in Firestore
+    function getUserRecord() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Enforces that caller strictly belongs to this specific organization
+    function isTenantMember(orgId) {
+      return isAuthenticated() && getUserRecord().organizationId == orgId;
+    }
+
+    // Role checks within tenant boundary
+    function isTenantAdmin(orgId) {
+      return isTenantMember(orgId) && (getUserRecord().role == 'org_admin' || getUserRecord().role == 'super_admin');
+    }
+
+    function canEditInvoices(orgId) {
+      return isTenantMember(orgId) && (getUserRecord().role in ['super_admin', 'org_admin', 'invoice_editor', 'billing_manager']);
+    }
+
+    function isPlatformSuperAdmin() {
+      return isAuthenticated() && getUserRecord().role == 'super_admin';
+    }
+
+    // Users Collection: users can only read their own user record or members in their own org
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isTenantMember(resource.data.organizationId));
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isPlatformSuperAdmin());
+      allow delete: if isPlatformSuperAdmin();
+    }
+
+    // Organizations Collection: Strict Multi-Tenant Boundary
+    match /organizations/{orgId} {
+      // Only members of this specific organization can read or view settings
+      allow read: if isTenantMember(orgId) || isPlatformSuperAdmin();
+      // Only administrators of this organization can update branding, bank details, or settings
+      allow update: if isTenantAdmin(orgId);
+      allow create: if isAuthenticated();
+      allow delete: if isPlatformSuperAdmin();
+
+      // Invoices: Absolutely private to this organization
+      match /invoices/{invoiceId} {
+        allow read: if isTenantMember(orgId);
+        allow create: if canEditInvoices(orgId) && request.resource.data.organizationId == orgId;
+        allow update: if canEditInvoices(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isTenantAdmin(orgId);
+      }
+
+      // Clients: Absolutely private to this organization
+      match /clients/{clientId} {
+        allow read: if isTenantMember(orgId);
+        allow create, update: if canEditInvoices(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isTenantAdmin(orgId);
+      }
+
+      // Audit Logs: Private to this organization and append-only
+      match /audit_logs/{logId} {
+        allow read: if isTenantMember(orgId);
+        allow create: if isTenantMember(orgId) && request.resource.data.organizationId == orgId;
+        allow update, delete: if false; // Immutable audit trail
+      }
+
+      // API Credentials: Only tenant admins can view or create API keys
+      match /api_keys/{keyId} {
+        allow read, write: if isTenantAdmin(orgId);
+      }
+    }
+  }
+}

@@ -11,6 +11,7 @@ import {
   Zap,
   Sparkles,
   Mail,
+  Database,
 } from 'lucide-react';
 import { OrganizationSettings, SupportedLanguage } from '../../types';
 import { translations } from '../../i18n/translations';
@@ -41,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'emails', label: t.emailNotifications, icon: Mail },
     { id: 'clients', label: t.clients, icon: Users },
     { id: 'branding', label: t.brandingSettings, icon: Palette },
+    { id: 'database', label: 'Cloud SQL Snapshots', icon: Database },
     { id: 'team', label: t.teamAndRoles, icon: Shield },
     { id: 'billing', label: t.billingSubscription, icon: CreditCard },
     { id: 'api', label: t.apiSecurity, icon: Key },

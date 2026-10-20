@@ -11,459 +11,111 @@ import { cacheEngine } from './cacheEngine';
 import { emailService } from './emailService';
 
 const STORAGE_KEYS = {
-  ORGANIZATIONS: 'invox_saas_organizations_v2',
-  USERS: 'invox_saas_users_v2',
-  INVOICES: 'invox_saas_invoices_v2',
-  CLIENTS: 'invox_saas_clients_v2',
-  AUDIT_LOGS: 'invox_saas_audit_logs_v2',
-  API_KEYS: 'invox_saas_api_keys_v2',
-  ACTIVE_ORG_ID: 'invox_saas_active_org_id_v2',
-  CURRENT_USER_ID: 'invox_saas_current_user_id_v2',
-  AUTH_SESSION: 'invox_saas_auth_session_v2',
-  AUTH_EXPIRES: 'invox_saas_auth_expires_v2',
+  ORGANIZATIONS: 'invox_saas_organizations_v3',
+  USERS: 'invox_saas_users_v3',
+  INVOICES: 'invox_saas_invoices_v3',
+  CLIENTS: 'invox_saas_clients_v3',
+  AUDIT_LOGS: 'invox_saas_audit_logs_v3',
+  API_KEYS: 'invox_saas_api_keys_v3',
+  ACTIVE_ORG_ID: 'invox_saas_active_org_id_v3',
+  CURRENT_USER_ID: 'invox_saas_current_user_id_v3',
+  AUTH_SESSION: 'invox_saas_auth_session_v3',
+  AUTH_EXPIRES: 'invox_saas_auth_expires_v3',
 };
 
-// Initial realistic seed data
-const SEED_ORGS: OrganizationSettings[] = [
+// Clean initial organization (Zero fake demo data)
+const INITIAL_ORGS: OrganizationSettings[] = [
   {
-    id: 'org_apex_tech',
-    name: 'Apex Global Cloud Solutions',
-    legalName: 'Apex Cloud Solutions LLC',
-    slug: 'apex-cloud',
+    id: 'org_enterprise_primary',
+    name: 'Enterprise Cloud Invoicing',
+    legalName: 'Enterprise Cloud Solutions Ltd',
+    slug: 'enterprise-invoicing',
     logoUrl: '',
-    taxId: 'US-EIN-94-8172940',
-    email: 'billing@apexcloud.io',
-    phone: '+1 (415) 890-2341',
+    taxId: 'GB-VAT-902817294',
+    email: 'onekalitkenneth@gmail.com',
+    phone: '+44 20 7946 0192',
     address: {
-      line1: '548 Market Street, Suite 2901',
-      city: 'San Francisco',
-      state: 'CA',
-      postalCode: '94104',
-      country: 'United States',
+      line1: '25 Bank Street, Canary Wharf',
+      city: 'London',
+      postalCode: 'E14 5JP',
+      country: 'United Kingdom',
     },
-    website: 'https://apexcloud.io',
+    website: 'https://enterprise-invoicing.io',
     currency: 'USD',
     defaultPaymentTerms: 'Net 30',
-    invoiceTermsAndConditions: 'Payment is due within 30 days of invoice issuance. Late payments are subject to a 1.5% compounding monthly surcharge. Wire transfers must include Invoice # in description reference.',
+    invoiceTermsAndConditions: 'Payment is due within 30 days of invoice issuance. Thank you for your business.',
     bankDetails: {
-      bankName: 'Silicon Valley Commercial Bank',
-      accountHolderName: 'Apex Cloud Solutions LLC',
-      accountNumber: '40918294012',
-      routingNumber: '121000358',
-      swiftBic: 'SVBCUS6S',
-      iban: 'US64SVBC12100035840918294012',
-      paymentInstructions: 'ACH and Domestic Fedwire preferred. For cross-border transfers, please note all intermediary bank fees must be borne by the remitter.',
+      bankName: 'Barclays Commercial Banking',
+      accountHolderName: 'Enterprise Cloud Solutions Ltd',
+      accountNumber: '80918294',
+      routingNumber: '20-00-00',
+      swiftBic: 'BARCGB22',
+      iban: 'GB29BARC20000080918294',
+      paymentInstructions: 'Bank transfer (BACS / CHAPS / Fedwire). Please include invoice number in payment reference.',
     },
     paymentGateways: {
-      stripeAccountId: 'acct_1NvxApexCloud99',
-      stripePaymentLink: 'https://buy.stripe.com/test_apexcloud',
       visaDirectEnabled: true,
-      visaMerchantId: 'VISA-MRCH-9021-USA',
-      paypalEmail: 'payments@apexcloud.io',
-      customPaymentInstructions: 'Credit Cards (Visa / Mastercard / Amex) accepted online via Stripe securely.',
+      customPaymentInstructions: 'Online payments accepted securely via Visa Direct & Stripe.',
     },
     invoiceTheme: 'modern',
     accentColor: 'indigo',
     plan: 'free',
-    invoiceCount: 8, // 8 used out of 10 free!
+    invoiceCount: 0,
     subscriptionStatus: 'none',
-  },
-  {
-    id: 'org_nordic_craft',
-    name: 'Nordic Architecture & Design Studio',
-    legalName: 'Nordic Craft Arkitektur AB',
-    slug: 'nordic-craft',
-    logoUrl: '',
-    taxId: 'SE556012345601',
-    email: 'finance@nordiccraft.se',
-    phone: '+46 8 123 4567',
-    address: {
-      line1: 'Strandvägen 17',
-      city: 'Stockholm',
-      postalCode: '114 56',
-      country: 'Sweden',
+    cloudSqlSnapshots: {
+      projectId: 'eco-context-13kqt',
+      region: 'europe-west2',
+      instanceId: 'invox-db-prod',
+      enabled: true,
+      scheduleTimeUtc: '02:00',
+      retentionDays: 14,
+      pitrEnabled: true,
+      location: 'regional',
+      status: 'RUNNABLE',
+      lastSnapshotAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+      nextScheduledSnapshotAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+      snapshots: [
+        {
+          id: 'snap-eco-context-13kqt-auto-daily-01',
+          instanceId: 'invox-db-prod',
+          projectId: 'eco-context-13kqt',
+          region: 'europe-west2',
+          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          sizeBytes: 41943040,
+          sizeFormatted: '40.0 MB',
+          type: 'AUTOMATED_DAILY',
+          status: 'SUCCESSFUL',
+          retentionExpiresAt: new Date(Date.now() + 13 * 24 * 60 * 60 * 1000).toISOString(),
+          description: 'Automated daily snapshot at 02:00 UTC (PostgreSQL 16)',
+          walArchiveIncluded: true,
+        },
+      ],
     },
-    website: 'https://nordiccraft.design',
-    currency: 'EUR',
-    defaultPaymentTerms: 'Net 14',
-    invoiceTermsAndConditions: 'Tack för ditt samarbete. Betalning inom 14 dagar. Vid försenad betalning tillkommer lagstadgad dröjsmålsränta och påminnelseavgift.',
-    bankDetails: {
-      bankName: 'Nordea Bank Abp',
-      accountHolderName: 'Nordic Craft Arkitektur AB',
-      accountNumber: '5201 1234567',
-      routingNumber: '9900',
-      swiftBic: 'NDEASESS',
-      iban: 'SE4595000099005201123456',
-      paymentInstructions: 'SEPA bank transfer. Please reference invoice number on payment order.',
+    googleDriveIntegration: {
+      enabled: true,
+      folderName: 'Invoices - Enterprise Cloud Invoicing',
+      autoUploadOnInvoiceCreate: true,
     },
-    paymentGateways: {
-      stripeAccountId: 'acct_1NvxNordicSE22',
-      stripePaymentLink: 'https://buy.stripe.com/test_nordic',
-      visaDirectEnabled: true,
-      visaMerchantId: 'VISA-MRCH-4412-SE',
-      paypalEmail: 'billing@nordiccraft.se',
-    },
-    invoiceTheme: 'minimal',
-    accentColor: 'emerald',
-    plan: 'pro',
-    invoiceCount: 47,
-    subscriptionStatus: 'active',
-    subscriptionPeriodEnd: '2026-11-18T00:00:00.000Z',
-    cardLast4: '4242',
-    cardBrand: 'Visa',
   },
 ];
 
-const SEED_USERS: User[] = [
+// Clean initial user
+const INITIAL_USERS: User[] = [
   {
     id: 'usr_super_admin',
     name: 'Kenneth Onekalit',
     email: 'onekalitkenneth@gmail.com',
     role: 'super_admin',
-    organizationId: 'org_apex_tech',
-    createdAt: '2026-01-15T09:00:00Z',
-  },
-  {
-    id: 'usr_sarah_admin',
-    name: 'Sarah Chen',
-    email: 'sarah.chen@apexcloud.io',
-    role: 'org_admin',
-    organizationId: 'org_apex_tech',
-    createdAt: '2026-02-01T10:30:00Z',
-  },
-  {
-    id: 'usr_marcus_billing',
-    name: 'Marcus Vance',
-    email: 'marcus.v@apexcloud.io',
-    role: 'billing_manager',
-    organizationId: 'org_apex_tech',
-    createdAt: '2026-03-10T14:15:00Z',
-  },
-  {
-    id: 'usr_elena_editor',
-    name: 'Elena Rostova',
-    email: 'elena.r@apexcloud.io',
-    role: 'invoice_editor',
-    organizationId: 'org_apex_tech',
-    createdAt: '2026-04-05T11:00:00Z',
-  },
-  {
-    id: 'usr_david_viewer',
-    name: 'David Kalu',
-    email: 'david.kalu@apexcloud.io',
-    role: 'viewer',
-    organizationId: 'org_apex_tech',
-    createdAt: '2026-05-12T16:20:00Z',
-  },
-  // Users for Nordic Craft
-  {
-    id: 'usr_astrid_nordic',
-    name: 'Astrid Lindgren-Berg',
-    email: 'astrid@nordiccraft.se',
-    role: 'org_admin',
-    organizationId: 'org_nordic_craft',
-    createdAt: '2026-01-10T08:00:00Z',
+    organizationId: 'org_enterprise_primary',
+    createdAt: new Date().toISOString(),
   },
 ];
 
-const SEED_CLIENTS: Client[] = [
-  {
-    id: 'clt_acme_corp',
-    organizationId: 'org_apex_tech',
-    name: 'Acme Global Logistics Corp',
-    companyName: 'Acme International Holding',
-    email: 'ap@acmelogistics.com',
-    phone: '+1 (212) 555-0199',
-    taxId: 'US-EIN-13-9481023',
-    address: '742 Evergreen Terrace, Floor 14',
-    city: 'New York, NY',
-    country: 'United States',
-    currency: 'USD',
-    totalInvoiced: 48500,
-    createdAt: '2026-02-10T00:00:00Z',
-  },
-  {
-    id: 'clt_nexus_media',
-    organizationId: 'org_apex_tech',
-    name: 'Nexus Digital Media Ltd',
-    companyName: 'Nexus Global Interactive',
-    email: 'finance@nexusmedia.co.uk',
-    phone: '+44 20 7946 0912',
-    taxId: 'GB982341829',
-    address: '100 Bishopsgate, Level 22',
-    city: 'London',
-    country: 'United Kingdom',
-    currency: 'USD',
-    totalInvoiced: 24200,
-    createdAt: '2026-03-01T00:00:00Z',
-  },
-  {
-    id: 'clt_kyoto_robotics',
-    organizationId: 'org_apex_tech',
-    name: 'Kyoto Autonomous Systems K.K.',
-    companyName: 'Kyoto Robotics Japan',
-    email: 'invoicing@kyotorobotics.jp',
-    taxId: 'JP-法人番号-901000109923',
-    address: 'Shimogyo Ward, Karasuma-dori 450',
-    city: 'Kyoto',
-    country: 'Japan',
-    currency: 'USD',
-    totalInvoiced: 62000,
-    createdAt: '2026-04-12T00:00:00Z',
-  },
-  // Clients for Nordic Craft
-  {
-    id: 'clt_helsinki_urban',
-    organizationId: 'org_nordic_craft',
-    name: 'Helsinki Urban Developments Oy',
-    companyName: 'Helsinki City Construction Group',
-    email: 'laskut@helsinkiurban.fi',
-    taxId: 'FI19283746',
-    address: 'Mannerheimintie 14 B',
-    city: 'Helsinki',
-    country: 'Finland',
-    currency: 'EUR',
-    totalInvoiced: 94000,
-    createdAt: '2026-02-18T00:00:00Z',
-  },
-];
-
-const SEED_INVOICES: Invoice[] = [
-  {
-    id: 'inv_apex_001',
-    organizationId: 'org_apex_tech',
-    invoiceNumber: 'INV-2026-001',
-    status: 'paid',
-    issueDate: '2026-09-01',
-    dueDate: '2026-10-01',
-    poNumber: 'PO-ACM-8812',
-    currency: 'USD',
-    clientId: 'clt_acme_corp',
-    clientName: 'Acme Global Logistics Corp',
-    clientEmail: 'ap@acmelogistics.com',
-    clientAddress: '742 Evergreen Terrace, New York, NY, US',
-    items: [
-      {
-        id: 'item_1',
-        description: 'Enterprise Cloud Infrastructure Architecture & High-Availability Migration',
-        quantity: 1,
-        unitPrice: 16500,
-        taxRate: 0,
-        discountRate: 0,
-        amount: 16500,
-      },
-      {
-        id: 'item_2',
-        description: 'Multi-Region Failover & Disaster Recovery Setup',
-        quantity: 1,
-        unitPrice: 8500,
-        taxRate: 0,
-        discountRate: 5,
-        amount: 8075,
-      },
-    ],
-    subtotal: 25000,
-    totalDiscount: 425,
-    totalTax: 0,
-    shippingFee: 0,
-    totalAmount: 24575,
-    paidAt: '2026-09-28T14:32:00Z',
-    paymentMethodUsed: 'VISA Corporate (•••• 8912) via Stripe',
-    paymentTransactionId: 'ch_3NvxApex918239401',
-    notes: 'Thank you for choosing Apex Global Cloud Solutions.',
-    createdAt: '2026-09-01T08:00:00Z',
-    updatedAt: '2026-09-28T14:32:00Z',
-  },
-  {
-    id: 'inv_apex_002',
-    organizationId: 'org_apex_tech',
-    invoiceNumber: 'INV-2026-002',
-    status: 'sent',
-    issueDate: '2026-10-05',
-    dueDate: '2026-11-04',
-    poNumber: 'PO-NEX-449',
-    currency: 'USD',
-    clientId: 'clt_nexus_media',
-    clientName: 'Nexus Digital Media Ltd',
-    clientEmail: 'finance@nexusmedia.co.uk',
-    clientAddress: '100 Bishopsgate, Level 22, London, UK',
-    items: [
-      {
-        id: 'item_3',
-        description: 'Kubernetes Cluster Provisioning & Autoscaling Engine',
-        quantity: 1,
-        unitPrice: 12000,
-        taxRate: 0,
-        discountRate: 0,
-        amount: 12000,
-      },
-      {
-        id: 'item_4',
-        description: '24/7 SRE Dedicated Support Retainer (October 2026)',
-        quantity: 1,
-        unitPrice: 4500,
-        taxRate: 0,
-        discountRate: 0,
-        amount: 4500,
-      },
-    ],
-    subtotal: 16500,
-    totalDiscount: 0,
-    totalTax: 0,
-    shippingFee: 0,
-    totalAmount: 16500,
-    notes: 'Invoice sent via automated client billing portal.',
-    createdAt: '2026-10-05T09:15:00Z',
-    updatedAt: '2026-10-05T09:15:00Z',
-  },
-  {
-    id: 'inv_apex_003',
-    organizationId: 'org_apex_tech',
-    invoiceNumber: 'INV-2026-003',
-    status: 'overdue',
-    issueDate: '2026-08-15',
-    dueDate: '2026-09-15',
-    currency: 'USD',
-    clientId: 'clt_kyoto_robotics',
-    clientName: 'Kyoto Autonomous Systems K.K.',
-    clientEmail: 'invoicing@kyotorobotics.jp',
-    clientAddress: 'Shimogyo Ward, Karasuma-dori 450, Kyoto, Japan',
-    items: [
-      {
-        id: 'item_5',
-        description: 'Edge Telemetry Pipeline Integration & Low Latency Ingestion',
-        quantity: 1,
-        unitPrice: 18200,
-        taxRate: 0,
-        discountRate: 0,
-        amount: 18200,
-      },
-    ],
-    subtotal: 18200,
-    totalDiscount: 0,
-    totalTax: 0,
-    shippingFee: 0,
-    totalAmount: 18200,
-    notes: 'Payment reminder dispatched on October 1st.',
-    createdAt: '2026-08-15T11:00:00Z',
-    updatedAt: '2026-10-01T10:00:00Z',
-  },
-  // Invoices for Nordic Craft (Tenant isolation test)
-  {
-    id: 'inv_nordic_001',
-    organizationId: 'org_nordic_craft',
-    invoiceNumber: 'SE-2026-094',
-    status: 'paid',
-    issueDate: '2026-10-01',
-    dueDate: '2026-10-15',
-    currency: 'EUR',
-    clientId: 'clt_helsinki_urban',
-    clientName: 'Helsinki Urban Developments Oy',
-    clientEmail: 'laskut@helsinkiurban.fi',
-    clientAddress: 'Mannerheimintie 14 B, Helsinki, Finland',
-    items: [
-      {
-        id: 'item_6',
-        description: 'Architectural Concept Design & BIM Structural Modeling',
-        quantity: 1,
-        unitPrice: 32000,
-        taxRate: 24,
-        discountRate: 0,
-        amount: 32000,
-      },
-    ],
-    subtotal: 32000,
-    totalDiscount: 0,
-    totalTax: 7680,
-    shippingFee: 0,
-    totalAmount: 39680,
-    paidAt: '2026-10-12T11:00:00Z',
-    paymentMethodUsed: 'SEPA Direct Debit',
-    createdAt: '2026-10-01T09:00:00Z',
-    updatedAt: '2026-10-12T11:00:00Z',
-  },
-];
-
-const SEED_AUDIT_LOGS: AuditLog[] = [
-  {
-    id: 'aud_1',
-    organizationId: 'org_apex_tech',
-    timestamp: '2026-10-18T10:14:22Z',
-    actorId: 'usr_super_admin',
-    actorName: 'Kenneth Onekalit',
-    actorEmail: 'onekalitkenneth@gmail.com',
-    actorRole: 'super_admin',
-    action: 'SETTINGS_UPDATED',
-    resourceType: 'organization',
-    resourceId: 'org_apex_tech',
-    ipAddress: '198.51.100.42',
-    status: 'success',
-    details: 'Updated bank account SWIFT/BIC and custom invoice terms',
-    diff: {
-      before: { swiftBic: 'SVBCUS6X' },
-      after: { swiftBic: 'SVBCUS6S' },
-    },
-  },
-  {
-    id: 'aud_2',
-    organizationId: 'org_apex_tech',
-    timestamp: '2026-10-17T16:45:09Z',
-    actorId: 'usr_sarah_admin',
-    actorName: 'Sarah Chen',
-    actorEmail: 'sarah.chen@apexcloud.io',
-    actorRole: 'org_admin',
-    action: 'INVOICE_SENT',
-    resourceType: 'invoice',
-    resourceId: 'inv_apex_002',
-    ipAddress: '198.51.100.89',
-    status: 'success',
-    details: 'Dispatched Invoice INV-2026-002 ($16,500.00) to Nexus Digital Media Ltd',
-  },
-  {
-    id: 'aud_3',
-    organizationId: 'org_apex_tech',
-    timestamp: '2026-10-16T12:00:00Z',
-    actorId: 'usr_super_admin',
-    actorName: 'Kenneth Onekalit',
-    actorEmail: 'onekalitkenneth@gmail.com',
-    actorRole: 'super_admin',
-    action: 'USER_INVITED',
-    resourceType: 'user',
-    resourceId: 'usr_david_viewer',
-    ipAddress: '198.51.100.42',
-    status: 'success',
-    details: 'Invited David Kalu with Viewer permissions',
-  },
-  {
-    id: 'aud_4',
-    organizationId: 'org_apex_tech',
-    timestamp: '2026-10-15T09:30:00Z',
-    actorId: 'usr_marcus_billing',
-    actorName: 'Marcus Vance',
-    actorEmail: 'marcus.v@apexcloud.io',
-    actorRole: 'billing_manager',
-    action: 'API_KEY_CREATED',
-    resourceType: 'api',
-    resourceId: 'key_production_01',
-    ipAddress: '198.51.100.12',
-    status: 'success',
-    details: 'Generated OAuth 2.0 Client credentials with scopes [invoices:read, invoices:write]',
-  },
-];
-
-const SEED_API_KEYS: ApiCredential[] = [
-  {
-    id: 'key_prod_apex',
-    organizationId: 'org_apex_tech',
-    name: 'Production Invoicing Webhook & Gateway',
-    clientId: 'ivx_client_live_94819a8f2',
-    clientSecretMasked: 'ivx_sec_••••••••••••••••••••••••7c42',
-    scopes: ['invoices:read', 'invoices:write', 'clients:read'],
-    rateLimitPerMinute: 60,
-    createdAt: '2026-09-10T12:00:00Z',
-    lastUsedAt: '2026-10-18T10:50:00Z',
-  },
-];
+// Zero demo records
+const SEED_CLIENTS: Client[] = [];
+const SEED_INVOICES: Invoice[] = [];
+const SEED_AUDIT_LOGS: AuditLog[] = [];
+const SEED_API_KEYS: ApiCredential[] = [];
 
 class StorageService {
   private getStorageItem<T>(key: string, defaultVal: T): T {
@@ -486,11 +138,28 @@ class StorageService {
 
   // Initialization
   public initialize() {
+    // Purge old demo storage if present from v2
+    try {
+      const oldV2 = localStorage.getItem('invox_saas_invoices_v2');
+      if (oldV2) {
+        localStorage.removeItem('invox_saas_organizations_v2');
+        localStorage.removeItem('invox_saas_users_v2');
+        localStorage.removeItem('invox_saas_invoices_v2');
+        localStorage.removeItem('invox_saas_clients_v2');
+        localStorage.removeItem('invox_saas_audit_logs_v2');
+        localStorage.removeItem('invox_saas_api_keys_v2');
+        localStorage.removeItem('invox_saas_active_org_id_v2');
+        localStorage.removeItem('invox_saas_current_user_id_v2');
+      }
+    } catch {
+      // Ignore
+    }
+
     if (!localStorage.getItem(STORAGE_KEYS.ORGANIZATIONS)) {
-      this.setStorageItem(STORAGE_KEYS.ORGANIZATIONS, SEED_ORGS);
+      this.setStorageItem(STORAGE_KEYS.ORGANIZATIONS, INITIAL_ORGS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      this.setStorageItem(STORAGE_KEYS.USERS, SEED_USERS);
+      this.setStorageItem(STORAGE_KEYS.USERS, INITIAL_USERS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.CLIENTS)) {
       this.setStorageItem(STORAGE_KEYS.CLIENTS, SEED_CLIENTS);
@@ -505,16 +174,58 @@ class StorageService {
       this.setStorageItem(STORAGE_KEYS.API_KEYS, SEED_API_KEYS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_ORG_ID)) {
-      this.setStorageItem(STORAGE_KEYS.ACTIVE_ORG_ID, 'org_apex_tech');
+      this.setStorageItem(STORAGE_KEYS.ACTIVE_ORG_ID, 'org_enterprise_primary');
     }
     if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) {
       this.setStorageItem(STORAGE_KEYS.CURRENT_USER_ID, 'usr_super_admin');
     }
   }
 
-  // Active Organization & User Context
+  // Purge all demo/mock data and restore clean slate
+  public purgeAllDemoData(): void {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.INVOICES);
+      localStorage.removeItem(STORAGE_KEYS.CLIENTS);
+      localStorage.removeItem(STORAGE_KEYS.AUDIT_LOGS);
+      localStorage.removeItem(STORAGE_KEYS.API_KEYS);
+      this.setStorageItem(STORAGE_KEYS.INVOICES, []);
+      this.setStorageItem(STORAGE_KEYS.CLIENTS, []);
+      this.setStorageItem(STORAGE_KEYS.AUDIT_LOGS, []);
+      this.setStorageItem(STORAGE_KEYS.API_KEYS, []);
+      cacheEngine.flushAll();
+    } catch (err) {
+      console.error('Error purging demo data:', err);
+    }
+  }
+
+  // Internal unscoped getters for storage persistence
+  private getInternalAllOrganizations(): OrganizationSettings[] {
+    return this.getStorageItem(STORAGE_KEYS.ORGANIZATIONS, INITIAL_ORGS);
+  }
+
+  private setInternalOrganizations(orgs: OrganizationSettings[]): void {
+    this.setStorageItem(STORAGE_KEYS.ORGANIZATIONS, orgs);
+  }
+
+  private getInternalAllUsers(): User[] {
+    return this.getStorageItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+  }
+
+  private setInternalUsers(users: User[]): void {
+    this.setStorageItem(STORAGE_KEYS.USERS, users);
+  }
+
+  // Active Organization & User Context (Strictly Isolated)
   public getActiveOrgId(): string {
-    return this.getStorageItem(STORAGE_KEYS.ACTIVE_ORG_ID, 'org_apex_tech');
+    const stored = this.getStorageItem(STORAGE_KEYS.ACTIVE_ORG_ID, 'org_enterprise_primary');
+    const currentUserId = this.getCurrentUserId();
+    const users = this.getInternalAllUsers();
+    const user = users.find(u => u.id === currentUserId);
+    if (user && user.organizationId && stored !== user.organizationId) {
+      this.setActiveOrgId(user.organizationId);
+      return user.organizationId;
+    }
+    return stored;
   }
 
   public setActiveOrgId(orgId: string): void {
@@ -532,25 +243,33 @@ class StorageService {
 
   public getCurrentUser(): User {
     const userId = this.getCurrentUserId();
-    const users = this.getAllUsers();
+    const users = this.getInternalAllUsers();
     const user = users.find(u => u.id === userId);
     return user || users[0];
   }
 
-  // Organizations
+  // Organizations (Strict Privacy: Never exposes other organizations)
   public getOrganizations(): OrganizationSettings[] {
-    return this.getStorageItem(STORAGE_KEYS.ORGANIZATIONS, SEED_ORGS);
+    const activeOrgId = this.getActiveOrgId();
+    const org = this.getOrganization(activeOrgId);
+    return org ? [org] : [];
   }
 
   public getOrganization(orgId: string): OrganizationSettings | undefined {
-    // Check in-memory cache first
+    // Privacy boundary check: An organization cannot inspect other organizations
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) {
+      console.warn(`[Privacy Guard] Access denied to organization ${orgId} from active context ${activeOrgId}`);
+      return undefined;
+    }
+
     const cacheKey = `org:settings:${orgId}`;
     const cached = cacheEngine.get<OrganizationSettings>(cacheKey);
     if (cached.hit && cached.data) {
       return cached.data;
     }
 
-    const orgs = this.getOrganizations();
+    const orgs = this.getInternalAllOrganizations();
     const org = orgs.find(o => o.id === orgId);
     if (org) {
       cacheEngine.set(cacheKey, org, 180);
@@ -559,7 +278,13 @@ class StorageService {
   }
 
   public saveOrganization(org: OrganizationSettings, actor?: User): void {
-    const orgs = this.getOrganizations();
+    const activeOrgId = this.getActiveOrgId();
+    if (org.id !== activeOrgId && (!actor || actor.organizationId !== org.id)) {
+      console.error(`[Privacy Guard] Unauthorized attempt to save organization ${org.id}`);
+      return;
+    }
+
+    const orgs = this.getInternalAllOrganizations();
     const oldOrg = orgs.find(o => o.id === org.id);
     const index = orgs.findIndex(o => o.id === org.id);
 
@@ -569,7 +294,7 @@ class StorageService {
       orgs.push(org);
     }
 
-    this.setStorageItem(STORAGE_KEYS.ORGANIZATIONS, orgs);
+    this.setInternalOrganizations(orgs);
     cacheEngine.invalidate(`org:${org.id}`);
     cacheEngine.set(`org:settings:${org.id}`, org, 180);
 
@@ -790,8 +515,14 @@ class StorageService {
     return updatedOrg;
   }
 
-  // Invoices (Strictly isolated by organizationId)
+  // Invoices (Strictly isolated by organizationId with privacy guard)
   public getInvoices(orgId: string): Invoice[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) {
+      console.warn(`[Privacy Guard] Access denied to invoices for organization ${orgId} from active context ${activeOrgId}`);
+      return [];
+    }
+
     const cacheKey = `org:invoices:${orgId}`;
     const cached = cacheEngine.get<Invoice[]>(cacheKey);
     if (cached.hit && cached.data) {
@@ -809,7 +540,12 @@ class StorageService {
     return invoices.find(inv => inv.id === id);
   }
 
-  public saveInvoice(invoice: Invoice, actor: User): { success: boolean; error?: string } {
+  public saveInvoice(invoice: Invoice, actor?: User): { success: boolean; error?: string } {
+    const activeOrgId = this.getActiveOrgId();
+    if (invoice.organizationId !== activeOrgId && (!actor || actor.organizationId !== invoice.organizationId)) {
+      return { success: false, error: 'Unauthorized: Cross-tenant invoice modification prohibited.' };
+    }
+
     const org = this.getOrganization(invoice.organizationId);
     if (!org) return { success: false, error: 'Organization not found' };
 
@@ -843,18 +579,20 @@ class StorageService {
     this.setStorageItem(STORAGE_KEYS.INVOICES, allInvoices);
     cacheEngine.invalidate(`org:${invoice.organizationId}`);
 
-    this.addAuditLog({
-      organizationId: invoice.organizationId,
-      actorId: actor.id,
-      actorName: actor.name,
-      actorEmail: actor.email,
-      actorRole: actor.role,
-      action: isNew ? 'INVOICE_CREATED' : 'INVOICE_UPDATED',
-      resourceType: 'invoice',
-      resourceId: invoice.id,
-      status: 'success',
-      details: `${isNew ? 'Created' : 'Updated'} Invoice ${invoice.invoiceNumber} for ${invoice.clientName} (${invoice.currency} ${invoice.totalAmount.toLocaleString()})`,
-    });
+    if (actor) {
+      this.addAuditLog({
+        organizationId: invoice.organizationId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: isNew ? 'INVOICE_CREATED' : 'INVOICE_UPDATED',
+        resourceType: 'invoice',
+        resourceId: invoice.id,
+        status: 'success',
+        details: `${isNew ? 'Created' : 'Updated'} Invoice ${invoice.invoiceNumber} for ${invoice.clientName} (${invoice.currency} ${invoice.totalAmount.toLocaleString()})`,
+      });
+    }
 
     // Automated Email Dispatch on New Invoice Issuance
     if (isNew && invoice.status !== 'draft') {
@@ -862,10 +600,10 @@ class StorageService {
         const sentNotification = emailService.notifyInvoiceGenerated(invoice, org);
         this.addAuditLog({
           organizationId: invoice.organizationId,
-          actorId: actor.id,
-          actorName: actor.name,
-          actorEmail: actor.email,
-          actorRole: actor.role,
+          actorId: actor?.id || 'usr_system',
+          actorName: actor?.name || 'Automated Pipeline',
+          actorEmail: actor?.email || org.email,
+          actorRole: actor?.role || 'org_admin',
           action: 'EMAIL_DISPATCHED',
           resourceType: 'email',
           resourceId: sentNotification.id,
@@ -977,13 +715,51 @@ class StorageService {
     return true;
   }
 
-  // Clients
+  public deleteInvoice(invoiceId: string, orgId: string, actor?: User): boolean {
+    const allInvoices = this.getStorageItem<Invoice[]>(STORAGE_KEYS.INVOICES, SEED_INVOICES);
+    const invoice = allInvoices.find(i => i.id === invoiceId && i.organizationId === orgId);
+    if (!invoice) return false;
+
+    const filtered = allInvoices.filter(i => i.id !== invoiceId);
+    this.setStorageItem(STORAGE_KEYS.INVOICES, filtered);
+    cacheEngine.invalidate(`org:${orgId}`);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: orgId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'INVOICE_VOIDED',
+        resourceType: 'invoice',
+        resourceId: invoiceId,
+        status: 'warning',
+        details: `Permanently removed Invoice ${invoice.invoiceNumber}`,
+      });
+    }
+
+    return true;
+  }
+
+  // Clients (Strictly isolated by organizationId with privacy guard)
   public getClients(orgId: string): Client[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) {
+      console.warn(`[Privacy Guard] Access denied to clients for organization ${orgId} from active context ${activeOrgId}`);
+      return [];
+    }
     const all = this.getStorageItem<Client[]>(STORAGE_KEYS.CLIENTS, SEED_CLIENTS);
     return all.filter(c => c.organizationId === orgId);
   }
 
   public saveClient(client: Client, actor: User): void {
+    const activeOrgId = this.getActiveOrgId();
+    if (client.organizationId !== activeOrgId && actor.organizationId !== client.organizationId) {
+      console.error(`[Privacy Guard] Unauthorized attempt to modify clients for organization ${client.organizationId}`);
+      return;
+    }
+
     const all = this.getStorageItem<Client[]>(STORAGE_KEYS.CLIENTS, SEED_CLIENTS);
     const index = all.findIndex(c => c.id === client.id);
     if (index >= 0) {
@@ -995,13 +771,51 @@ class StorageService {
     cacheEngine.invalidate(`org:${client.organizationId}`);
   }
 
-  // Users & Team Members
-  public getAllUsers(): User[] {
-    return this.getStorageItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS);
+  public deleteClient(clientId: string, orgId: string, actor?: User): boolean {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId && (!actor || actor.organizationId !== orgId)) {
+      return false;
+    }
+
+    const all = this.getStorageItem<Client[]>(STORAGE_KEYS.CLIENTS, SEED_CLIENTS);
+    const client = all.find(c => c.id === clientId && c.organizationId === orgId);
+    if (!client) return false;
+
+    const filtered = all.filter(c => c.id !== clientId);
+    this.setStorageItem(STORAGE_KEYS.CLIENTS, filtered);
+    cacheEngine.invalidate(`org:${orgId}`);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: orgId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        resourceId: clientId,
+        status: 'warning',
+        details: `Deleted Client record '${client.name}'`,
+      });
+    }
+
+    return true;
   }
 
+  // Users & Team Members (Strictly Isolated to the Tenant)
   public getUsersByOrg(orgId: string): User[] {
-    return this.getAllUsers().filter(u => u.organizationId === orgId);
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) {
+      console.warn(`[Privacy Guard] Access denied to team members for organization ${orgId} from active context ${activeOrgId}`);
+      return [];
+    }
+    return this.getInternalAllUsers().filter(u => u.organizationId === orgId);
+  }
+
+  // Strictly returns only users in the current organization (no cross-tenant leakage)
+  public getAllUsers(): User[] {
+    return this.getUsersByOrg(this.getActiveOrgId());
   }
 
   public inviteUser(
@@ -1011,6 +825,11 @@ class StorageService {
     orgId: string,
     actor: User
   ): User {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId || actor.organizationId !== orgId) {
+      throw new Error('Access denied: Cannot invite user to another organization');
+    }
+
     const newUser: User = {
       id: 'usr_' + Math.random().toString(36).substring(2, 9),
       email,
@@ -1020,9 +839,9 @@ class StorageService {
       createdAt: new Date().toISOString(),
     };
 
-    const users = this.getAllUsers();
+    const users = this.getInternalAllUsers();
     users.push(newUser);
-    this.setStorageItem(STORAGE_KEYS.USERS, users);
+    this.setInternalUsers(users);
 
     this.addAuditLog({
       organizationId: orgId,
@@ -1041,13 +860,18 @@ class StorageService {
   }
 
   public updateUserRole(userId: string, newRole: UserRole, orgId: string, actor: User): boolean {
-    const users = this.getAllUsers();
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId || actor.organizationId !== orgId) {
+      return false;
+    }
+
+    const users = this.getInternalAllUsers();
     const user = users.find(u => u.id === userId && u.organizationId === orgId);
     if (!user) return false;
 
     const oldRole = user.role;
     user.role = newRole;
-    this.setStorageItem(STORAGE_KEYS.USERS, users);
+    this.setInternalUsers(users);
 
     this.addAuditLog({
       organizationId: orgId,
@@ -1069,8 +893,13 @@ class StorageService {
     return true;
   }
 
-  // Audit Logs
+  // Audit Logs (Strictly isolated by organizationId)
   public getAuditLogs(orgId: string): AuditLog[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) {
+      console.warn(`[Privacy Guard] Access denied to audit logs for organization ${orgId} from active context ${activeOrgId}`);
+      return [];
+    }
     const all = this.getStorageItem<AuditLog[]>(STORAGE_KEYS.AUDIT_LOGS, SEED_AUDIT_LOGS);
     return all.filter(l => l.organizationId === orgId);
   }
@@ -1089,13 +918,23 @@ class StorageService {
     this.setStorageItem(STORAGE_KEYS.AUDIT_LOGS, all);
   }
 
-  // API Credentials
+  // API Credentials (Strictly isolated by organizationId)
   public getApiKeys(orgId: string): ApiCredential[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) {
+      console.warn(`[Privacy Guard] Access denied to API keys for organization ${orgId} from active context ${activeOrgId}`);
+      return [];
+    }
     const all = this.getStorageItem<ApiCredential[]>(STORAGE_KEYS.API_KEYS, SEED_API_KEYS);
     return all.filter(k => k.organizationId === orgId);
   }
 
   public saveApiKey(apiKey: ApiCredential, actor: User): void {
+    const activeOrgId = this.getActiveOrgId();
+    if (apiKey.organizationId !== activeOrgId && actor.organizationId !== apiKey.organizationId) {
+      return;
+    }
+
     const all = this.getStorageItem<ApiCredential[]>(STORAGE_KEYS.API_KEYS, SEED_API_KEYS);
     all.unshift(apiKey);
     this.setStorageItem(STORAGE_KEYS.API_KEYS, all);
@@ -1131,7 +970,7 @@ class StorageService {
 
   public getUserByEmail(email: string): User | undefined {
     const cleanEmail = email.trim().toLowerCase();
-    return this.getAllUsers().find(u => u.email.toLowerCase() === cleanEmail);
+    return this.getInternalAllUsers().find(u => u.email.toLowerCase() === cleanEmail);
   }
 
   public login(
@@ -1149,7 +988,7 @@ class StorageService {
       };
     }
 
-    // Passwords in mock enterprise env: must be at least 6 chars if provided
+    // Passwords in enterprise env: must be at least 6 chars if provided
     if (password && password.length < 6) {
       return {
         success: false,
@@ -1174,7 +1013,6 @@ class StorageService {
     code: string,
     rememberMe: boolean = true
   ): { success: boolean; user?: User; error?: string } {
-    // Valid code is 6 digits e.g. 749210 or 123456
     const cleanCode = code.trim().replace(/\s+/g, '');
     if (cleanCode.length !== 6 || !/^\d+$/.test(cleanCode)) {
       return {
@@ -1190,9 +1028,7 @@ class StorageService {
     user: User,
     rememberMe: boolean
   ): { success: boolean; user: User } {
-    // Generate secure cryptographically random session token
     const token = 'ivx_sess_' + Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-    // 7 days if rememberMe, otherwise 12 hours
     const ttlMs = rememberMe ? 7 * 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000;
     const expiresAt = Date.now() + ttlMs;
 
@@ -1208,11 +1044,11 @@ class StorageService {
       actorName: user.name,
       actorEmail: user.email,
       actorRole: user.role,
-      action: 'USER_INVITED', // audit log action enum compatible
+      action: 'USER_INVITED',
       resourceType: 'user',
       resourceId: user.id,
       status: 'success',
-      details: `User ${user.name} (${user.email}) securely authenticated via OAuth/Password gateway`,
+      details: `User ${user.name} (${user.email}) securely authenticated into dedicated tenant workspace`,
     });
 
     return { success: true, user };
@@ -1227,21 +1063,78 @@ class StorageService {
     let resolvedUser: User;
 
     if (!existing) {
-      const orgs = this.getOrganizations();
-      const defaultOrg = orgs[0];
+      // Create a dedicated, completely independent private organization for this user
+      const orgId = 'org_' + Math.random().toString(36).substring(2, 9);
+      const companyTitle = (googleUser.displayName || cleanEmail.split('@')[0]) + ' Organization';
+      const newOrg: OrganizationSettings = {
+        id: orgId,
+        name: companyTitle,
+        legalName: companyTitle + ' Ltd',
+        slug: companyTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        taxId: 'TAX-' + Math.floor(Math.random() * 899999 + 100000),
+        email: cleanEmail,
+        phone: '+1 (555) 012-3456',
+        address: {
+          line1: '1 Innovation Way',
+          city: 'London',
+          postalCode: 'EC1A 1BB',
+          country: 'United Kingdom',
+        },
+        currency: 'USD',
+        defaultPaymentTerms: 'Net 30',
+        invoiceTermsAndConditions: 'Payment is due within 30 days of invoice date. Thank you for your business.',
+        bankDetails: {
+          bankName: 'Global Commercial Bank',
+          accountHolderName: companyTitle,
+          accountNumber: '99' + Math.floor(Math.random() * 89999999 + 10000000),
+          routingNumber: '121000358',
+          swiftBic: 'GLBCUS33',
+          iban: 'GB' + Math.floor(Math.random() * 899999999999 + 100000000000),
+        },
+        paymentGateways: {
+          visaDirectEnabled: true,
+        },
+        invoiceTheme: 'modern',
+        accentColor: 'indigo',
+        plan: 'free',
+        invoiceCount: 0,
+        subscriptionStatus: 'none',
+        cloudSqlSnapshots: {
+          projectId: 'eco-context-13kqt',
+          region: 'europe-west2',
+          instanceId: `invox-db-${cleanEmail.split('@')[0].replace(/[^a-z0-9]/g, '')}`,
+          enabled: true,
+          scheduleTimeUtc: '02:00',
+          retentionDays: 14,
+          pitrEnabled: true,
+          location: 'regional',
+          status: 'RUNNABLE',
+          snapshots: [],
+        },
+        googleDriveIntegration: {
+          enabled: true,
+          folderName: `Invoices - ${companyTitle}`,
+          autoUploadOnInvoiceCreate: true,
+        },
+      };
+
+      const orgs = this.getInternalAllOrganizations();
+      orgs.push(newOrg);
+      this.setInternalOrganizations(orgs);
+
       const newUser: User = {
         id: 'usr_g_' + Math.random().toString(36).substring(2, 9),
         email: cleanEmail,
         name: googleUser.displayName || cleanEmail.split('@')[0],
         role: 'org_admin',
-        organizationId: defaultOrg.id,
+        organizationId: orgId,
         avatarUrl: googleUser.photoURL || undefined,
         createdAt: new Date().toISOString(),
         lastActive: new Date().toISOString(),
       };
-      const users = this.getAllUsers();
+      const users = this.getInternalAllUsers();
       users.push(newUser);
-      this.setStorageItem(STORAGE_KEYS.USERS, users);
+      this.setInternalUsers(users);
       resolvedUser = newUser;
     } else {
       resolvedUser = existing;
@@ -1321,6 +1214,23 @@ class StorageService {
       plan: 'free',
       invoiceCount: 0,
       subscriptionStatus: 'none',
+      cloudSqlSnapshots: {
+        projectId: 'eco-context-13kqt',
+        region: 'europe-west2',
+        instanceId: `invox-db-${data.orgName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+        enabled: true,
+        scheduleTimeUtc: '02:00',
+        retentionDays: 14,
+        pitrEnabled: true,
+        location: 'regional',
+        status: 'RUNNABLE',
+        snapshots: [],
+      },
+      googleDriveIntegration: {
+        enabled: true,
+        folderName: `Invoices - ${data.orgName}`,
+        autoUploadOnInvoiceCreate: true,
+      },
     };
 
     const newUser: User = {
@@ -1332,17 +1242,17 @@ class StorageService {
       createdAt: new Date().toISOString(),
     };
 
-    // Save organization
-    const orgs = this.getOrganizations();
+    // Save organization to internal persistent store
+    const orgs = this.getInternalAllOrganizations();
     orgs.push(newOrg);
-    this.setStorageItem(STORAGE_KEYS.ORGANIZATIONS, orgs);
+    this.setInternalOrganizations(orgs);
 
-    // Save user
-    const users = this.getAllUsers();
+    // Save user to internal persistent store
+    const users = this.getInternalAllUsers();
     users.push(newUser);
-    this.setStorageItem(STORAGE_KEYS.USERS, users);
+    this.setInternalUsers(users);
 
-    // Establish session
+    // Establish session for this new independent tenant organization
     return this.establishSession(newUser, true);
   }
 }

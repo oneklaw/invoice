@@ -12,6 +12,9 @@ import {
   Check,
   Plus,
   Mail,
+  UploadCloud,
+  ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
@@ -73,6 +76,13 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const handleVoid = (inv: Invoice) => {
     if (confirm(`Are you sure you want to void Invoice ${inv.invoiceNumber}?`)) {
       storageService.voidInvoice(inv.id, org.id, currentUser);
+      onRefresh();
+    }
+  };
+
+  const handleDelete = (inv: Invoice) => {
+    if (confirm(`Permanently delete Invoice ${inv.invoiceNumber}? This action cannot be undone.`)) {
+      storageService.deleteInvoice(inv.id, org.id, currentUser);
       onRefresh();
     }
   };
@@ -298,6 +308,19 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                           </button>
                         )}
 
+                        {/* Google Drive PDF link */}
+                        {inv.googleDriveLink && (
+                          <a
+                            href={inv.googleDriveLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 text-emerald-400 hover:text-emerald-300 rounded hover:bg-slate-800 transition-colors"
+                            title="Open PDF in Google Drive"
+                          >
+                            <UploadCloud className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+
                         {/* Void invoice */}
                         {inv.status !== 'void' && canEdit && (
                           <button
@@ -306,6 +329,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                             title="Void Invoice"
                           >
                             <Ban className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Delete invoice */}
+                        {canEdit && (
+                          <button
+                            onClick={() => handleDelete(inv)}
+                            className="p-1.5 text-slate-500 hover:text-rose-500 rounded hover:bg-slate-800 transition-colors"
+                            title="Delete Invoice"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>

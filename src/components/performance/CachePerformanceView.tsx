@@ -21,8 +21,12 @@ interface CachePerformanceViewProps {
 }
 
 export const CachePerformanceView: React.FC<CachePerformanceViewProps> = ({ org, currentUser }) => {
+  const getTenantEntries = () => {
+    return cacheEngine.getAllEntries().filter(e => !e.key.startsWith('org:') || e.key.includes(org.id));
+  };
+
   const [metrics, setMetrics] = useState<CacheMetrics>(cacheEngine.getMetrics());
-  const [entries, setEntries] = useState<CacheEntry[]>(cacheEngine.getAllEntries());
+  const [entries, setEntries] = useState<CacheEntry[]>(getTenantEntries());
   const [isRunningLoadTest, setIsRunningLoadTest] = useState(false);
   const [loadTestResult, setLoadTestResult] = useState<{
     durationMs: number;
@@ -35,7 +39,7 @@ export const CachePerformanceView: React.FC<CachePerformanceViewProps> = ({ org,
 
   const refreshData = () => {
     setMetrics(cacheEngine.getMetrics());
-    setEntries(cacheEngine.getAllEntries());
+    setEntries(getTenantEntries());
   };
 
   useEffect(() => {

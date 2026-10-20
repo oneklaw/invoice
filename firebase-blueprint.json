@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "Organization": {
+      "title": "Organization",
+      "description": "Multi-tenant organization boundary and billing settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "legalName": { "type": "string" },
+        "currency": { "type": "string" },
+        "taxId": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "pro"] },
+        "invoiceCount": { "type": "number" },
+        "subscriptionStatus": { "type": "string" }
+      },
+      "required": ["id", "name", "currency"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access control and tenant assignment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["super_admin", "org_admin", "billing_manager", "invoice_editor", "viewer"] },
+        "organizationId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email", "role", "organizationId"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Isolated organization customer invoice",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "sent", "paid", "overdue", "void"] },
+        "totalAmount": { "type": "number" },
+        "currency": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" }
+      },
+      "required": ["id", "organizationId", "invoiceNumber", "status", "totalAmount", "currency"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Isolated customer billing contact profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "totalInvoiced": { "type": "number" }
+      },
+      "required": ["id", "organizationId", "name", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Platform user directory with organization membership"
+    },
+    "/organizations/{orgId}": {
+      "schema": "Organization",
+      "description": "Isolated tenant organization root"
+    },
+    "/organizations/{orgId}/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Tenant-isolated customer invoices"
+    },
+    "/organizations/{orgId}/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Tenant-isolated customer billing profiles"
+    }
+  }
+}

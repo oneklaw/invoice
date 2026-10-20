@@ -67,6 +67,8 @@ export interface OrganizationSettings {
     replyToEmail: string;
     customFooterNote?: string;
   };
+  googleDriveIntegration?: GoogleDriveIntegrationSettings;
+  cloudSqlSnapshots?: CloudSqlSnapshotSchedule;
   invoiceTheme: InvoiceTheme;
   accentColor: InvoiceAccentColor;
   plan: 'free' | 'pro';
@@ -75,6 +77,45 @@ export interface OrganizationSettings {
   subscriptionPeriodEnd?: string;
   cardLast4?: string;
   cardBrand?: string;
+}
+
+export interface GoogleDriveIntegrationSettings {
+  enabled: boolean;
+  folderName: string;
+  folderId?: string;
+  autoUploadOnInvoiceCreate: boolean;
+  connectedEmail?: string;
+  lastSyncAt?: string;
+}
+
+export interface CloudSqlSnapshotEntry {
+  id: string;
+  instanceId: string;
+  projectId: string;
+  region: string;
+  createdAt: string;
+  sizeBytes: number;
+  sizeFormatted: string;
+  type: 'AUTOMATED_DAILY' | 'ON_DEMAND';
+  status: 'SUCCESSFUL' | 'IN_PROGRESS' | 'FAILED';
+  retentionExpiresAt: string;
+  description: string;
+  walArchiveIncluded: boolean;
+}
+
+export interface CloudSqlSnapshotSchedule {
+  projectId: string;
+  region: string;
+  instanceId: string;
+  enabled: boolean;
+  scheduleTimeUtc: string; // e.g. "02:00"
+  retentionDays: number; // 7, 14, 30, 90
+  pitrEnabled: boolean;
+  location: 'regional' | 'multi-regional';
+  status: 'RUNNABLE' | 'MAINTENANCE' | 'BACKUP_IN_PROGRESS';
+  lastSnapshotAt?: string;
+  nextScheduledSnapshotAt?: string;
+  snapshots: CloudSqlSnapshotEntry[];
 }
 
 export interface InvoiceItem {
@@ -119,6 +160,12 @@ export interface Invoice {
   paidAt?: string;
   paymentMethodUsed?: string;
   paymentTransactionId?: string;
+
+  // Google Drive Automated Pipeline Fields
+  googleDriveFileId?: string;
+  googleDriveLink?: string;
+  googleDriveUploadedAt?: string;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -163,8 +210,12 @@ export interface AuditLog {
     | 'CACHE_PURGED'
     | 'RATE_LIMIT_EXCEEDED'
     | 'EMAIL_DISPATCHED'
-    | 'DATA_EXPORTED';
-  resourceType: 'invoice' | 'user' | 'organization' | 'subscription' | 'api' | 'cache' | 'email' | 'report';
+    | 'DATA_EXPORTED'
+    | 'SNAPSHOT_SCHEDULE_UPDATED'
+    | 'SNAPSHOT_CREATED'
+    | 'SNAPSHOT_RESTORED'
+    | 'GOOGLE_DRIVE_SYNCED';
+  resourceType: 'invoice' | 'user' | 'organization' | 'subscription' | 'api' | 'cache' | 'email' | 'report' | 'database' | 'drive';
   resourceId?: string;
   ipAddress: string;
   status: 'success' | 'warning' | 'error';

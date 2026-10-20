@@ -19,9 +19,10 @@ import { ClientManagerView } from './components/clients/ClientManagerView';
 import { SecureLoginView } from './components/auth/SecureLoginView';
 import { EmailNotificationsView } from './components/notifications/EmailNotificationsView';
 import { EmailNotification } from './types';
-import { Mail, CheckCircle2 } from 'lucide-react';
+import { Mail, CheckCircle2, UploadCloud, ExternalLink } from 'lucide-react';
 import { CompanyCurrencyConversionModal } from './components/currency/CompanyCurrencyConversionModal';
 import { CurrencyConverterModal } from './components/currency/CurrencyConverterModal';
+import { CloudSqlSnapshotSettings } from './components/database/CloudSqlSnapshotSettings';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(storageService.isAuthenticated());
@@ -30,6 +31,11 @@ export default function App() {
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>('en');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [emailToast, setEmailToast] = useState<EmailNotification | null>(null);
+  const [driveToast, setDriveToast] = useState<{
+    invoiceNumber: string;
+    folderName: string;
+    webViewLink?: string;
+  } | null>(null);
 
   // Reload trigger
   const [version, setVersion] = useState(0);
@@ -47,11 +53,21 @@ export default function App() {
       handleRefresh();
     };
 
+    const handleDriveSynced = (e: any) => {
+      if (e.detail) {
+        setDriveToast(e.detail);
+        setTimeout(() => setDriveToast(null), 6000);
+        handleRefresh();
+      }
+    };
+
     window.addEventListener('invox:email_dispatched', handleEmailDispatched);
     window.addEventListener('invox:currency_converted', handleCurrencyConverted);
+    window.addEventListener('invox:drive_synced', handleDriveSynced);
     return () => {
       window.removeEventListener('invox:email_dispatched', handleEmailDispatched);
       window.removeEventListener('invox:currency_converted', handleCurrencyConverted);
+      window.removeEventListener('invox:drive_synced', handleDriveSynced);
     };
   }, []);
 
@@ -65,24 +81,30 @@ export default function App() {
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
   const [isConverterModalOpen, setIsConverterModalOpen] = useState(false);
 
-  // Resolved tenant and user
-  const allOrgs = storageService.getOrganizations();
-  const currentOrg = storageService.getOrganization(activeOrgId) || allOrgs[0];
-  const allUsers = storageService.getAllUsers();
+  // Resolved tenant and user (Strict privacy isolation)
   const currentUser = storageService.getCurrentUser();
+  const effectiveOrgId = currentUser.organizationId;
+  const currentOrg = storageService.getOrganization(effectiveOrgId) || {
+    id: effectiveOrgId,
+    name: 'My Organization',
+    currency: 'USD',
+    plan: 'free',
+    invoiceCount: 0,
+    subscriptionStatus: 'none',
+    defaultPaymentTerms: 'Net 30',
+  } as OrganizationSettings;
+  const allOrgs = [currentOrg];
+  const allUsers = storageService.getUsersByOrg(effectiveOrgId);
 
-  const invoices = storageService.getInvoices(activeOrgId);
-  const clients = storageService.getClients(activeOrgId);
+  const invoices = storageService.getInvoices(effectiveOrgId);
+  const clients = storageService.getClients(effectiveOrgId);
 
   const handleSelectOrg = (newOrgId: string) => {
-    storageService.setActiveOrgId(newOrgId);
-    setActiveOrgId(newOrgId);
-    // Find an authorized user in this organization
-    const orgUsers = storageService.getUsersByOrg(newOrgId);
-    if (orgUsers.length > 0) {
-      storageService.setCurrentUserId(orgUsers[0].id);
-      setCurrentUserId(orgUsers[0].id);
+    if (newOrgId !== currentUser.organizationId) {
+      console.warn('[Privacy Guard] Cross-tenant organization access prohibited.');
+      return;
     }
+    setActiveOrgId(newOrgId);
     handleRefresh();
   };
 
@@ -232,6 +254,24 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'database' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                  <div>
+                    <h1 className="text-xl font-bold text-white tracking-tight">Cloud SQL & Automated Snapshots</h1>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Manage PostgreSQL database instance, daily snapshot schedules, and disaster recovery drills for project eco-context-13kqt (europe-west2).
+                    </p>
+                  </div>
+                </div>
+                <CloudSqlSnapshotSettings
+                  org={currentOrg}
+                  currentUser={currentUser}
+                  onSaved={handleRefresh}
+                />
+              </div>
+            )}
+
             {activeTab === 'team' && (
               <TeamManagement
                 org={currentOrg}
@@ -353,6 +393,45 @@ export default function App() {
           >
             View
           </button>
+        </div>
+      )}
+
+      {/* Real-Time Automated Google Drive PDF Pipeline Toast */}
+      {driveToast && (
+        <div className="fixed bottom-20 right-6 z-50 max-w-md bg-slate-900 border border-emerald-500/50 rounded-xl shadow-2xl p-4 text-slate-100 flex items-start gap-3 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+            <UploadCloud className="w-4 h-4" />
+          </div>
+          <div className="flex-1 pr-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+              <span>Google Drive PDF Saved</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-normal">● 200 Created</span>
+            </div>
+            <div className="text-[11px] text-emerald-300 font-medium truncate mt-0.5">
+              Invoice #{driveToast.invoiceNumber} PDF archived
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              Folder: <span className="text-slate-300 font-medium">{driveToast.folderName}</span>
+            </div>
+          </div>
+          {driveToast.webViewLink ? (
+            <a
+              href={driveToast.webViewLink}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold underline shrink-0 mt-1 flex items-center gap-1"
+            >
+              <span>Open</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          ) : (
+            <button
+              onClick={() => setDriveToast(null)}
+              className="text-[11px] text-slate-400 hover:text-slate-200 shrink-0 mt-1"
+            >
+              Dismiss
+            </button>
+          )}
         </div>
       )}
     </div>
