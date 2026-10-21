@@ -16,10 +16,12 @@ import {
   BookmarkPlus,
   AlertTriangle,
   FileCheck,
+  Receipt,
 } from 'lucide-react';
 import { Invoice, InvoiceVersion, OrganizationSettings } from '../../types';
 import { googleDriveService } from '../../services/googleDriveService';
 import { storageService } from '../../services/storage';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface InvoicePreviewModalProps {
   isOpen: boolean;
@@ -39,6 +41,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   const [currentInvoice, setCurrentInvoice] = useState<Invoice>(initialInvoice);
   const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
   const [driveSuccess, setDriveSuccess] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   // Versioning state
   const [showVersionsDrawer, setShowVersionsDrawer] = useState(false);
@@ -283,6 +286,17 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   <UploadCloud className="w-3.5 h-3.5 text-emerald-400" />
                 )}
                 <span>{isUploadingToDrive ? 'Saving...' : driveSuccess ? 'Saved to Drive!' : 'Save to Drive'}</span>
+              </button>
+            )}
+
+            {currentInvoice.status === 'paid' && (
+              <button
+                onClick={() => setShowReceiptModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 rounded-lg border border-emerald-800 transition-colors shadow-sm"
+                title="Generate Clean A4 Official Payment Receipt"
+              >
+                <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Clean A4 Receipt</span>
               </button>
             )}
 
@@ -735,6 +749,16 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Clean A4 Official Payment Receipt Modal */}
+      {showReceiptModal && (
+        <PaymentReceiptModal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          invoice={currentInvoice}
+          org={org}
+        />
       )}
       </div>
     </div>

@@ -14,8 +14,9 @@ import {
   Database,
   Building2,
   DollarSign,
+  TrendingUp,
 } from 'lucide-react';
-import { OrganizationSettings, SupportedLanguage } from '../../types';
+import { OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ interface SidebarProps {
   currentOrg: OrganizationSettings;
   currentLang: SupportedLanguage;
   onOpenUpgradeModal: () => void;
+  currentUser?: User;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -32,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentOrg,
   currentLang,
   onOpenUpgradeModal,
+  currentUser,
 }) => {
   const t = translations[currentLang];
   const isPro = currentOrg.plan === 'pro' && currentOrg.subscriptionStatus === 'active';
@@ -40,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
+    { id: 'saas-revenue', label: 'SaaS Revenue & Tenants', icon: TrendingUp, badge: 'MRR $' },
     { id: 'invoices', label: t.invoices, icon: FileText },
     { id: 'vendors', label: 'Vendors & Payments', icon: Building2 },
     { id: 'expenses', label: 'Expense Tracker', icon: DollarSign },
@@ -73,7 +77,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate flex-1">{item.label}</span>
+                {item.badge && (
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, Lock, CreditCard, ShieldCheck, Loader2 } from 'lucide-react';
+import { X, CheckCircle2, Lock, CreditCard, ShieldCheck, Loader2, Receipt, Printer } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Invoice, OrganizationSettings, User } from '../../types';
 import { storageService } from '../../services/storage';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface PublicPayInvoiceModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface PublicPayInvoiceModalProps {
   org: OrganizationSettings;
   currentUser: User;
   onPaymentSuccess: () => void;
+  onViewReceipt?: (invoice: Invoice) => void;
 }
 
 export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
@@ -20,6 +22,7 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
   org,
   currentUser,
   onPaymentSuccess,
+  onViewReceipt,
 }) => {
   const [selectedGateway, setSelectedGateway] = useState<'visa_stripe' | 'bank_wire'>('visa_stripe');
   const [cardNumber, setCardNumber] = useState('4242 4242 4242 8912');
@@ -29,6 +32,8 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [stepMessage, setStepMessage] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
+  const [paidInvoiceRecord, setPaidInvoiceRecord] = useState<Invoice | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   if (!isOpen) return null;
 
@@ -48,6 +53,15 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
     const methodStr = `VISA (•••• ${last4}) via Stripe Gateway`;
 
     storageService.markInvoicePaid(invoice.id, org.id, methodStr, currentUser);
+
+    const updated = storageService.getInvoiceById(invoice.id, org.id) || {
+      ...invoice,
+      status: 'paid',
+      paidAt: new Date().toISOString(),
+      paymentMethodUsed: methodStr,
+      paymentTransactionId: 'txn_' + Math.random().toString(36).substring(2, 11),
+    };
+    setPaidInvoiceRecord(updated);
 
     confetti({
       particleCount: 100,
@@ -108,19 +122,56 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
 
         {isCompleted ? (
           <div className="p-8 text-center space-y-4">
-            <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-6 h-6" />
+            <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30">
+              <CheckCircle2 className="w-7 h-7" />
             </div>
-            <h3 className="text-lg font-bold text-white">Payment Received!</h3>
-            <p className="text-xs text-slate-300 max-w-sm mx-auto">
-              Your payment of <strong className="font-mono text-white">{invoice.currency} {invoice.totalAmount.toLocaleString()}</strong> has been settled via Stripe & VISA. A formal receipt has been emailed to {invoice.clientEmail}.
-            </p>
-            <button
-              onClick={onClose}
-              className="mt-4 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold"
-            >
-              Close Window
-            </button>
+            <div>
+              <h3 className="text-lg font-bold text-white">Payment Received & Confirmed</h3>
+              <p className="text-xs text-slate-300 max-w-sm mx-auto mt-1">
+                Your payment of <strong className="font-mono text-white">{invoice.currency} {invoice.totalAmount.toLocaleString()}</strong> has been settled via {paidInvoiceRecord?.paymentMethodUsed || 'Stripe & VISA'}.
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-950/80 rounded-lg border border-slate-800 text-xs font-mono text-slate-400 max-w-sm mx-auto space-y-1 text-left">
+              <div className="flex justify-between">
+                <span>Receipt Number:</span>
+                <span className="text-white font-bold">REC-{invoice.invoiceNumber.replace(/^INV-?/i, '')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Transaction Ref:</span>
+                <span className="text-emerald-400 truncate max-w-[180px]">{paidInvoiceRecord?.paymentTransactionId || 'TXN-SETTLED-DIRECT'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Customer Email:</span>
+                <span className="text-slate-300">{invoice.clientEmail}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onViewReceipt && paidInvoiceRecord) {
+                    onClose();
+                    onViewReceipt(paidInvoiceRecord);
+                  } else {
+                    setShowReceiptModal(true);
+                  }
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all"
+              >
+                <Receipt className="w-4 h-4" />
+                <span>Generate Clean A4 Receipt</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors"
+              >
+                Close Window
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handlePay} className="p-6 pt-2 space-y-4">
@@ -235,7 +286,16 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    storageService.markInvoicePaid(invoice.id, org.id, 'Manual Bank Wire (Remittance Confirmed)', currentUser);
+                    const wireMethod = 'Manual Bank Wire (Remittance Confirmed)';
+                    storageService.markInvoicePaid(invoice.id, org.id, wireMethod, currentUser);
+                    const updated = storageService.getInvoiceById(invoice.id, org.id) || {
+                      ...invoice,
+                      status: 'paid',
+                      paidAt: new Date().toISOString(),
+                      paymentMethodUsed: wireMethod,
+                      paymentTransactionId: 'txn_wire_' + Math.random().toString(36).substring(2, 9),
+                    };
+                    setPaidInvoiceRecord(updated);
                     onPaymentSuccess();
                     setIsCompleted(true);
                   }}
@@ -253,6 +313,20 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
           </form>
         )}
       </div>
+
+      {/* Embedded A4 Receipt Modal */}
+      {showReceiptModal && (
+        <PaymentReceiptModal
+          isOpen={showReceiptModal}
+          onClose={() => {
+            setShowReceiptModal(false);
+            onClose();
+          }}
+          invoice={paidInvoiceRecord || invoice}
+          org={org}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };

@@ -22,12 +22,14 @@ import {
   Square,
   AlertCircle,
   X,
+  Receipt,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
 import { storageService } from '../../services/storage';
 import { emailService } from '../../services/emailService';
 import { googleDriveService } from '../../services/googleDriveService';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -63,6 +65,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const [reminderToast, setReminderToast] = useState<string | null>(null);
   const [isBulkTagModalOpen, setIsBulkTagModalOpen] = useState(false);
   const [newTagInput, setNewTagInput] = useState('');
+  const [receiptModalInvoice, setReceiptModalInvoice] = useState<Invoice | null>(null);
 
   const canEdit = ['super_admin', 'org_admin', 'invoice_editor'].includes(currentUser.role);
 
@@ -176,6 +179,10 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const handleMarkPaid = (inv: Invoice) => {
     storageService.markInvoicePaid(inv.id, org.id, 'Manual Bank Wire (Admin Override)', currentUser);
     onRefresh();
+    const updated = storageService.getInvoiceById(inv.id, org.id);
+    if (updated) {
+      setReceiptModalInvoice(updated);
+    }
   };
 
   const handleVoid = (inv: Invoice) => {
@@ -504,6 +511,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                             </button>
                           )}
 
+                          {/* Clean A4 Official Payment Receipt */}
+                          {inv.status === 'paid' && (
+                            <button
+                              onClick={() => setReceiptModalInvoice(inv)}
+                              className="p-1.5 text-emerald-400 hover:text-emerald-300 rounded hover:bg-slate-800 transition-colors"
+                              title="Generate Clean A4 Official Payment Receipt"
+                            >
+                              <Receipt className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           {/* Send Automated Email */}
                           <button
                             onClick={() => {
@@ -659,6 +677,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Clean A4 Official Payment Receipt Modal */}
+      {receiptModalInvoice && (
+        <PaymentReceiptModal
+          isOpen={Boolean(receiptModalInvoice)}
+          onClose={() => setReceiptModalInvoice(null)}
+          invoice={receiptModalInvoice}
+          org={org}
+          currentUser={currentUser}
+        />
       )}
     </div>
   );

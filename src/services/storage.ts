@@ -17,6 +17,8 @@ import {
   InvoiceComment,
   InvoiceVersion,
   ClientPortalSettings,
+  SaaSSubscriptionTransaction,
+  TenantQueryLog,
 } from '../types';
 import { cacheEngine } from './cacheEngine';
 import { emailService } from './emailService';
@@ -41,9 +43,11 @@ const STORAGE_KEYS = {
   CURRENT_USER_ID: 'invox_saas_current_user_id_v3',
   AUTH_SESSION: 'invox_saas_auth_session_v3',
   AUTH_EXPIRES: 'invox_saas_auth_expires_v3',
+  SAAS_REVENUE_TRANSACTIONS: 'invox_saas_revenue_transactions_v3',
+  TENANT_QUERY_LOGS: 'invox_saas_tenant_query_logs_v3',
 };
 
-// Clean initial organization (Zero fake demo data)
+// Multi-Tenant SaaS Organizations Network
 const INITIAL_ORGS: OrganizationSettings[] = [
   {
     id: 'org_enterprise_primary',
@@ -79,9 +83,12 @@ const INITIAL_ORGS: OrganizationSettings[] = [
     },
     invoiceTheme: 'modern',
     accentColor: 'indigo',
-    plan: 'free',
-    invoiceCount: 0,
-    subscriptionStatus: 'none',
+    plan: 'pro',
+    invoiceCount: 14,
+    subscriptionStatus: 'active',
+    subscriptionPeriodEnd: '2026-11-20T00:00:00.000Z',
+    cardLast4: '4242',
+    cardBrand: 'Visa',
     cloudSqlSnapshots: {
       projectId: 'eco-context-13kqt',
       region: 'europe-west2',
@@ -117,9 +124,197 @@ const INITIAL_ORGS: OrganizationSettings[] = [
       autoUploadOnInvoiceCreate: true,
     },
   },
+  {
+    id: 'org_apex_tech',
+    name: 'Apex Cloud Technologies Inc.',
+    legalName: 'Apex Cloud Global Technologies Inc.',
+    slug: 'apex-cloud',
+    taxId: 'US-EIN-94-8172940',
+    email: 'finance@apexcloud.io',
+    phone: '+1 (415) 890-2134',
+    address: {
+      line1: '548 Market Street, Suite 89201',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94104',
+      country: 'United States',
+    },
+    website: 'https://apexcloud.io',
+    currency: 'USD',
+    defaultPaymentTerms: 'Net 15',
+    invoiceTermsAndConditions: 'Standard SaaS license deliverables. Net 15 days.',
+    bankDetails: {
+      bankName: 'Silicon Valley Bank (First Citizens)',
+      accountHolderName: 'Apex Cloud Global Technologies Inc.',
+      accountNumber: '449102931',
+      routingNumber: '121140399',
+      swiftBic: 'SVBKUS6S',
+      iban: 'US34SVBK121140399449102931',
+      paymentInstructions: 'ACH or Fedwire directly to Apex Treasury.',
+    },
+    paymentGateways: {
+      visaDirectEnabled: true,
+    },
+    invoiceTheme: 'modern',
+    accentColor: 'indigo',
+    plan: 'pro',
+    invoiceCount: 28,
+    subscriptionStatus: 'active',
+    subscriptionPeriodEnd: '2026-11-15T00:00:00.000Z',
+    cardLast4: '8912',
+    cardBrand: 'Visa',
+  },
+  {
+    id: 'org_nordic_media',
+    name: 'Nordic Digital Media Studio',
+    legalName: 'Nordic Digital Media AB',
+    slug: 'nordic-media',
+    taxId: 'SE-556123456701',
+    email: 'billing@nordicmedia.se',
+    phone: '+46 8 123 4567',
+    address: {
+      line1: 'Sveavagen 44, Floor 5',
+      city: 'Stockholm',
+      postalCode: '111 34',
+      country: 'Sweden',
+    },
+    website: 'https://nordicmedia.se',
+    currency: 'EUR',
+    defaultPaymentTerms: 'Net 30',
+    invoiceTermsAndConditions: 'VAT 25% applied where applicable. Reverse charge for EU B2B.',
+    bankDetails: {
+      bankName: 'Nordea Bank Abp Sweden',
+      accountHolderName: 'Nordic Digital Media AB',
+      accountNumber: '99201940',
+      routingNumber: '3300',
+      swiftBic: 'NDEASESS',
+      iban: 'SE45330000000099201940',
+      paymentInstructions: 'SEPA Credit Transfer.',
+    },
+    paymentGateways: {
+      visaDirectEnabled: true,
+    },
+    invoiceTheme: 'slate',
+    accentColor: 'cyan',
+    plan: 'pro',
+    invoiceCount: 35,
+    subscriptionStatus: 'active',
+    subscriptionPeriodEnd: '2026-11-28T00:00:00.000Z',
+    cardLast4: '1044',
+    cardBrand: 'Mastercard',
+  },
+  {
+    id: 'org_quantum_ai',
+    name: 'Quantum AI Systems Ltd',
+    legalName: 'Quantum Artificial Intelligence Systems Ltd',
+    slug: 'quantum-ai',
+    taxId: 'GB-VAT-778899001',
+    email: 'accounts@quantumai.dev',
+    phone: '+44 1223 901234',
+    address: {
+      line1: 'Cambridge Science Park, Milton Road',
+      city: 'Cambridge',
+      postalCode: 'CB4 0FZ',
+      country: 'United Kingdom',
+    },
+    website: 'https://quantumai.dev',
+    currency: 'GBP',
+    defaultPaymentTerms: 'Net 30',
+    invoiceTermsAndConditions: 'Enterprise SLA Tier 1 with automated failover.',
+    bankDetails: {
+      bankName: 'HSBC UK Commercial Banking',
+      accountHolderName: 'Quantum Artificial Intelligence Systems Ltd',
+      accountNumber: '91823901',
+      routingNumber: '40-12-34',
+      swiftBic: 'HBUKGB41',
+      iban: 'GB82HBUK40123491823901',
+      paymentInstructions: 'BACS / CHAPS wire transfer.',
+    },
+    paymentGateways: {
+      visaDirectEnabled: true,
+    },
+    invoiceTheme: 'minimal',
+    accentColor: 'emerald',
+    plan: 'pro',
+    invoiceCount: 52,
+    subscriptionStatus: 'active',
+    subscriptionPeriodEnd: '2026-11-10T00:00:00.000Z',
+    cardLast4: '3001',
+    cardBrand: 'Amex',
+  },
+  {
+    id: 'org_solis_green',
+    name: 'Solis Renewable Energy Ltd',
+    legalName: 'Solis Renewable Energy Solutions Ltd',
+    slug: 'solis-energy',
+    taxId: 'GB-VAT-332211009',
+    email: 'admin@solisenergy.co.uk',
+    phone: '+44 117 987 6543',
+    address: {
+      line1: '10 Temple Way',
+      city: 'Bristol',
+      postalCode: 'BS2 0BY',
+      country: 'United Kingdom',
+    },
+    website: 'https://solisenergy.co.uk',
+    currency: 'GBP',
+    defaultPaymentTerms: 'Net 30',
+    invoiceTermsAndConditions: 'Clean energy transition project billings.',
+    bankDetails: {
+      bankName: 'NatWest Commercial',
+      accountHolderName: 'Solis Renewable Energy Solutions Ltd',
+      accountNumber: '29384756',
+      routingNumber: '60-00-01',
+      swiftBic: 'NWBKGB2L',
+      iban: 'GB11NWBK60000129384756',
+    },
+    paymentGateways: {
+      visaDirectEnabled: true,
+    },
+    invoiceTheme: 'modern',
+    accentColor: 'amber',
+    plan: 'free',
+    invoiceCount: 8,
+    subscriptionStatus: 'none',
+  },
+  {
+    id: 'org_zenith_freight',
+    name: 'Zenith Global Logistics GmbH',
+    legalName: 'Zenith Global Freight & Logistics GmbH',
+    slug: 'zenith-freight',
+    taxId: 'DE-VAT-192837465',
+    email: 'ops@zenithfreight.de',
+    phone: '+49 40 8899 0011',
+    address: {
+      line1: 'Am Sandtorkai 72',
+      city: 'Hamburg',
+      postalCode: '20457',
+      country: 'Germany',
+    },
+    website: 'https://zenithfreight.de',
+    currency: 'EUR',
+    defaultPaymentTerms: 'Net 30',
+    invoiceTermsAndConditions: 'International freight forwarding terms ADSp 2017.',
+    bankDetails: {
+      bankName: 'Deutsche Bank Hamburg',
+      accountHolderName: 'Zenith Global Freight & Logistics GmbH',
+      accountNumber: '5829102',
+      routingNumber: '20070000',
+      swiftBic: 'DEUTDEDBHAM',
+      iban: 'DE89200700000005829102',
+    },
+    paymentGateways: {
+      visaDirectEnabled: true,
+    },
+    invoiceTheme: 'classic',
+    accentColor: 'rose',
+    plan: 'free',
+    invoiceCount: 4,
+    subscriptionStatus: 'none',
+  },
 ];
 
-// Clean initial user
+// Initial users: Kenneth Onekalit (Platform Super Admin & SaaS Owner) + Tenant Admins
 const INITIAL_USERS: User[] = [
   {
     id: 'usr_super_admin',
@@ -127,7 +322,44 @@ const INITIAL_USERS: User[] = [
     email: 'onekalitkenneth@gmail.com',
     role: 'super_admin',
     organizationId: 'org_enterprise_primary',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-08-01T00:00:00.000Z',
+    lastActive: new Date().toISOString(),
+  },
+  {
+    id: 'usr_marcus_apex',
+    name: 'Marcus Vance',
+    email: 'marcus@apexcloud.io',
+    role: 'org_admin',
+    organizationId: 'org_apex_tech',
+    createdAt: '2026-08-15T00:00:00.000Z',
+    lastActive: '2026-10-20T14:30:00.000Z',
+  },
+  {
+    id: 'usr_freja_nordic',
+    name: 'Freja Lindstrom',
+    email: 'freja@nordicmedia.se',
+    role: 'org_admin',
+    organizationId: 'org_nordic_media',
+    createdAt: '2026-09-01T00:00:00.000Z',
+    lastActive: '2026-10-21T09:15:00.000Z',
+  },
+  {
+    id: 'usr_aris_quantum',
+    name: 'Dr. Aris Thorne',
+    email: 'aris@quantumai.dev',
+    role: 'org_admin',
+    organizationId: 'org_quantum_ai',
+    createdAt: '2026-09-10T00:00:00.000Z',
+    lastActive: '2026-10-21T11:45:00.000Z',
+  },
+  {
+    id: 'usr_claire_solis',
+    name: 'Claire Davies',
+    email: 'claire@solisenergy.co.uk',
+    role: 'org_admin',
+    organizationId: 'org_solis_green',
+    createdAt: '2026-09-25T00:00:00.000Z',
+    lastActive: '2026-10-19T16:20:00.000Z',
   },
 ];
 
@@ -396,6 +628,219 @@ const SEED_EXPENSES: Expense[] = [
   },
 ];
 
+const SEED_SAAS_REVENUE_TRANSACTIONS: SaaSSubscriptionTransaction[] = [
+  {
+    id: 'sub_txn_oct_apex',
+    organizationId: 'org_apex_tech',
+    organizationName: 'Apex Cloud Technologies Inc.',
+    planName: 'Pro',
+    amount: 2.00,
+    currency: 'USD',
+    billingCycle: 'monthly',
+    status: 'settled',
+    paymentGateway: 'Stripe Subscriptions (ch_3MvApex918201)',
+    transactionId: 'txn_sub_apex_oct26',
+    timestamp: '2026-10-15T08:30:00Z',
+    invoiceCount: 28,
+    cardLast4: '8912',
+  },
+  {
+    id: 'sub_txn_oct_nordic',
+    organizationId: 'org_nordic_media',
+    organizationName: 'Nordic Digital Media Studio',
+    planName: 'Pro',
+    amount: 2.00,
+    currency: 'EUR',
+    billingCycle: 'monthly',
+    status: 'settled',
+    paymentGateway: 'Stripe Subscriptions (ch_3MvNordic2233)',
+    transactionId: 'txn_sub_nordic_oct26',
+    timestamp: '2026-10-18T10:14:00Z',
+    invoiceCount: 35,
+    cardLast4: '1044',
+  },
+  {
+    id: 'sub_txn_oct_quantum',
+    organizationId: 'org_quantum_ai',
+    organizationName: 'Quantum AI Systems Ltd',
+    planName: 'Enterprise Pro',
+    amount: 19.00,
+    currency: 'GBP',
+    billingCycle: 'monthly',
+    status: 'settled',
+    paymentGateway: 'Visa Corporate Direct (ch_3MvQuantum99)',
+    transactionId: 'txn_sub_quantum_oct26',
+    timestamp: '2026-10-10T14:22:00Z',
+    invoiceCount: 52,
+    cardLast4: '3001',
+  },
+  {
+    id: 'sub_txn_oct_primary',
+    organizationId: 'org_enterprise_primary',
+    organizationName: 'Enterprise Cloud Invoicing',
+    planName: 'Pro',
+    amount: 2.00,
+    currency: 'USD',
+    billingCycle: 'monthly',
+    status: 'settled',
+    paymentGateway: 'Stripe Subscriptions (ch_3MvPrimary88)',
+    transactionId: 'txn_sub_primary_oct26',
+    timestamp: '2026-10-20T09:00:00Z',
+    invoiceCount: 14,
+    cardLast4: '4242',
+  },
+  {
+    id: 'sub_txn_sep_apex',
+    organizationId: 'org_apex_tech',
+    organizationName: 'Apex Cloud Technologies Inc.',
+    planName: 'Pro',
+    amount: 2.00,
+    currency: 'USD',
+    billingCycle: 'monthly',
+    status: 'settled',
+    paymentGateway: 'Stripe Subscriptions (ch_3MsApex81729)',
+    transactionId: 'txn_sub_apex_sep26',
+    timestamp: '2026-09-15T08:30:00Z',
+    invoiceCount: 18,
+    cardLast4: '8912',
+  },
+  {
+    id: 'sub_txn_sep_quantum',
+    organizationId: 'org_quantum_ai',
+    organizationName: 'Quantum AI Systems Ltd',
+    planName: 'Enterprise Pro',
+    amount: 19.00,
+    currency: 'GBP',
+    billingCycle: 'monthly',
+    status: 'settled',
+    paymentGateway: 'Visa Corporate Direct (ch_3MsQuantum44)',
+    transactionId: 'txn_sub_quantum_sep26',
+    timestamp: '2026-09-10T14:22:00Z',
+    invoiceCount: 38,
+    cardLast4: '3001',
+  },
+];
+
+const SEED_TENANT_QUERY_LOGS: TenantQueryLog[] = [
+  {
+    id: 'tql_001_slow_inv',
+    timestamp: '2026-10-21T03:42:15Z',
+    organizationId: 'org_apex_tech',
+    organizationName: 'Apex Cloud Technologies Inc.',
+    userEmail: 'marcus@apexcloud.io',
+    userRole: 'org_admin',
+    collection: 'invoices',
+    signature: "db.collection('invoices').where('organizationId', '==', 'org_apex_tech').where('status', 'in', ['sent','overdue']).orderBy('dueDate', 'desc')",
+    latencyMs: 342,
+    docsScanned: 1840,
+    docsReturned: 14,
+    status: 'slow_unindexed',
+    suggestedIndex: {
+      name: 'idx_invoices_org_status_dueDate',
+      fields: [
+        { field: 'organizationId', mode: 'ASCENDING' },
+        { field: 'status', mode: 'ASCENDING' },
+        { field: 'dueDate', mode: 'DESCENDING' },
+      ],
+      firestoreJson: JSON.stringify({
+        collectionGroup: 'invoices',
+        queryScope: 'COLLECTION',
+        fields: [
+          { fieldPath: 'organizationId', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'dueDate', order: 'DESCENDING' },
+        ],
+      }, null, 2),
+      sqlStatement: 'CREATE INDEX CONCURRENTLY idx_invoices_org_status_due ON invoices (organization_id, status, due_date DESC);',
+      reason: 'Multi-tenant composite filter and order-by scans entire partition without a composite index.',
+    },
+    resolutionStatus: 'open',
+  },
+  {
+    id: 'tql_002_exp_cat',
+    timestamp: '2026-10-21T03:15:20Z',
+    organizationId: 'org_nordic_media',
+    organizationName: 'Nordic Digital Media Studio',
+    userEmail: 'freja@nordicmedia.se',
+    userRole: 'org_admin',
+    collection: 'expenses',
+    signature: "db.collection('expenses').where('organizationId', '==', 'org_nordic_media').where('category', '==', 'Hardware').orderBy('date', 'desc')",
+    latencyMs: 218,
+    docsScanned: 920,
+    docsReturned: 5,
+    status: 'slow_unindexed',
+    suggestedIndex: {
+      name: 'idx_expenses_org_cat_date',
+      fields: [
+        { field: 'organizationId', mode: 'ASCENDING' },
+        { field: 'category', mode: 'ASCENDING' },
+        { field: 'date', mode: 'DESCENDING' },
+      ],
+      firestoreJson: JSON.stringify({
+        collectionGroup: 'expenses',
+        queryScope: 'COLLECTION',
+        fields: [
+          { fieldPath: 'organizationId', order: 'ASCENDING' },
+          { fieldPath: 'category', order: 'ASCENDING' },
+          { fieldPath: 'date', order: 'DESCENDING' },
+        ],
+      }, null, 2),
+      sqlStatement: 'CREATE INDEX CONCURRENTLY idx_expenses_org_cat_date ON expenses (organization_id, category, date DESC);',
+      reason: 'Expense category filtering with date ordering requires composite indexing.',
+    },
+    resolutionStatus: 'open',
+  },
+  {
+    id: 'tql_003_audit_actor',
+    timestamp: '2026-10-21T02:50:11Z',
+    organizationId: 'org_enterprise_primary',
+    organizationName: 'Enterprise Cloud Invoicing',
+    userEmail: 'onekalitkenneth@gmail.com',
+    userRole: 'super_admin',
+    collection: 'audit_logs',
+    signature: "db.collection('audit_logs').where('organizationId', '==', 'org_enterprise_primary').where('action', '==', 'SUBSCRIPTION_UPGRADED').orderBy('timestamp', 'desc')",
+    latencyMs: 185,
+    docsScanned: 640,
+    docsReturned: 2,
+    status: 'warning',
+    suggestedIndex: {
+      name: 'idx_audit_org_action_time',
+      fields: [
+        { field: 'organizationId', mode: 'ASCENDING' },
+        { field: 'action', mode: 'ASCENDING' },
+        { field: 'timestamp', mode: 'DESCENDING' },
+      ],
+      firestoreJson: JSON.stringify({
+        collectionGroup: 'audit_logs',
+        queryScope: 'COLLECTION',
+        fields: [
+          { fieldPath: 'organizationId', order: 'ASCENDING' },
+          { fieldPath: 'action', order: 'ASCENDING' },
+          { fieldPath: 'timestamp', order: 'DESCENDING' },
+        ],
+      }, null, 2),
+      sqlStatement: 'CREATE INDEX CONCURRENTLY idx_audit_org_action_time ON audit_logs (organization_id, action, timestamp DESC);',
+      reason: 'Audit trail action query filtered by tenant.',
+    },
+    resolutionStatus: 'resolved',
+  },
+  {
+    id: 'tql_004_client_search',
+    timestamp: '2026-10-21T01:30:00Z',
+    organizationId: 'org_quantum_ai',
+    organizationName: 'Quantum AI Systems Ltd',
+    userEmail: 'aris@quantumai.dev',
+    userRole: 'org_admin',
+    collection: 'clients',
+    signature: "db.collection('clients').where('organizationId', '==', 'org_quantum_ai').orderBy('createdAt', 'desc')",
+    latencyMs: 19,
+    docsScanned: 24,
+    docsReturned: 24,
+    status: 'optimized',
+    resolutionStatus: 'resolved',
+  },
+];
+
 class StorageService {
   private getStorageItem<T>(key: string, defaultVal: T): T {
     try {
@@ -436,10 +881,23 @@ class StorageService {
 
     if (!localStorage.getItem(STORAGE_KEYS.ORGANIZATIONS)) {
       this.setStorageItem(STORAGE_KEYS.ORGANIZATIONS, INITIAL_ORGS);
+    } else {
+      // Ensure multi-tenants exist if previously seeded with only 1 org
+      const existingOrgs = this.getStorageItem<OrganizationSettings[]>(STORAGE_KEYS.ORGANIZATIONS, []);
+      if (existingOrgs.length <= 1) {
+        this.setStorageItem(STORAGE_KEYS.ORGANIZATIONS, INITIAL_ORGS);
+      }
     }
+
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       this.setStorageItem(STORAGE_KEYS.USERS, INITIAL_USERS);
+    } else {
+      const existingUsers = this.getStorageItem<User[]>(STORAGE_KEYS.USERS, []);
+      if (!existingUsers.some(u => u.email === 'onekalitkenneth@gmail.com')) {
+        this.setStorageItem(STORAGE_KEYS.USERS, INITIAL_USERS);
+      }
     }
+
     if (!localStorage.getItem(STORAGE_KEYS.CLIENTS)) {
       this.setStorageItem(STORAGE_KEYS.CLIENTS, SEED_CLIENTS);
     }
@@ -463,6 +921,12 @@ class StorageService {
     }
     if (!localStorage.getItem(STORAGE_KEYS.EXPENSES)) {
       this.setStorageItem(STORAGE_KEYS.EXPENSES, SEED_EXPENSES);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.SAAS_REVENUE_TRANSACTIONS)) {
+      this.setStorageItem(STORAGE_KEYS.SAAS_REVENUE_TRANSACTIONS, SEED_SAAS_REVENUE_TRANSACTIONS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.TENANT_QUERY_LOGS)) {
+      this.setStorageItem(STORAGE_KEYS.TENANT_QUERY_LOGS, SEED_TENANT_QUERY_LOGS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_ORG_ID)) {
       this.setStorageItem(STORAGE_KEYS.ACTIVE_ORG_ID, 'org_enterprise_primary');
@@ -2181,6 +2645,250 @@ class StorageService {
       invoices: clientInvoices,
       payments,
     };
+  }
+
+  // ==========================================
+  // SUPER ADMIN & SAAS REVENUE OPERATIONS
+  // ==========================================
+  public loginAsSuperAdmin(rememberMe: boolean = true): { success: boolean; user?: User } {
+    const users = this.getStorageItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    let admin = users.find(u => u.email === 'onekalitkenneth@gmail.com');
+    if (!admin) {
+      admin = {
+        id: 'usr_super_admin',
+        name: 'Kenneth Onekalit',
+        email: 'onekalitkenneth@gmail.com',
+        role: 'super_admin',
+        organizationId: 'org_enterprise_primary',
+        createdAt: '2026-08-01T00:00:00.000Z',
+        lastActive: new Date().toISOString(),
+      };
+      users.unshift(admin);
+      this.setStorageItem(STORAGE_KEYS.USERS, users);
+    }
+    return this.establishSession(admin, rememberMe);
+  }
+
+  public getSaaSTenants(): OrganizationSettings[] {
+    return this.getInternalAllOrganizations();
+  }
+
+  public getSaaSRevenueTransactions(): SaaSSubscriptionTransaction[] {
+    return this.getStorageItem<SaaSSubscriptionTransaction[]>(
+      STORAGE_KEYS.SAAS_REVENUE_TRANSACTIONS,
+      SEED_SAAS_REVENUE_TRANSACTIONS
+    );
+  }
+
+  public recordSaaSSubscriptionCharge(
+    orgId: string,
+    planName: 'Pro' | 'Enterprise Pro' | 'Starter',
+    amount: number,
+    gateway: string,
+    actor: User
+  ): SaaSSubscriptionTransaction {
+    const orgs = this.getInternalAllOrganizations();
+    const org = orgs.find(o => o.id === orgId);
+    if (!org) throw new Error('Tenant organization not found');
+
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    org.plan = 'pro';
+    org.subscriptionStatus = 'active';
+    org.subscriptionPeriodEnd = nextMonth.toISOString();
+    this.saveOrganization(org);
+
+    const txns = this.getSaaSRevenueTransactions();
+    const newTxn: SaaSSubscriptionTransaction = {
+      id: 'sub_txn_' + Math.random().toString(36).substring(2, 9),
+      organizationId: org.id,
+      organizationName: org.name,
+      planName,
+      amount,
+      currency: org.currency || 'USD',
+      billingCycle: 'monthly',
+      status: 'settled',
+      paymentGateway: gateway,
+      transactionId: 'ch_stripe_' + Math.random().toString(36).substring(2, 10),
+      timestamp: new Date().toISOString(),
+      invoiceCount: org.invoiceCount || 0,
+      cardLast4: org.cardLast4 || '4242',
+    };
+
+    txns.unshift(newTxn);
+    this.setStorageItem(STORAGE_KEYS.SAAS_REVENUE_TRANSACTIONS, txns);
+
+    this.addAuditLog({
+      organizationId: orgId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SUBSCRIPTION_UPGRADED',
+      resourceType: 'subscription',
+      resourceId: orgId,
+      status: 'success',
+      details: `Collected SaaS recurring subscription payment of ${org.currency} ${amount.toFixed(2)} from ${org.name} via ${gateway}`,
+    });
+
+    return newTxn;
+  }
+
+  public updateTenantPlan(
+    orgId: string,
+    plan: 'free' | 'pro',
+    status: 'active' | 'canceled' | 'past_due' | 'none',
+    customInvoiceCountDelta: number = 0,
+    actor?: User
+  ): OrganizationSettings {
+    const orgs = this.getInternalAllOrganizations();
+    const org = orgs.find(o => o.id === orgId);
+    if (!org) throw new Error('Tenant organization not found');
+
+    const prevPlan = org.plan;
+    const prevStatus = org.subscriptionStatus;
+
+    org.plan = plan;
+    org.subscriptionStatus = status;
+    if (customInvoiceCountDelta !== 0) {
+      org.invoiceCount = Math.max(0, (org.invoiceCount || 0) + customInvoiceCountDelta);
+    }
+
+    if (plan === 'pro' && status === 'active' && !org.subscriptionPeriodEnd) {
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      org.subscriptionPeriodEnd = nextMonth.toISOString();
+    }
+
+    this.saveOrganization(org);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: orgId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        resourceId: orgId,
+        status: 'success',
+        details: `Platform Super Admin modified ${org.name} plan from ${prevPlan} (${prevStatus}) to ${plan} (${status})`,
+      });
+    }
+
+    return org;
+  }
+
+  public resetTenantInvoiceQuota(orgId: string, actor: User): OrganizationSettings {
+    const orgs = this.getInternalAllOrganizations();
+    const org = orgs.find(o => o.id === orgId);
+    if (!org) throw new Error('Tenant organization not found');
+
+    const prevCount = org.invoiceCount || 0;
+    org.invoiceCount = 0;
+    this.saveOrganization(org);
+
+    this.addAuditLog({
+      organizationId: orgId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: orgId,
+      status: 'success',
+      details: `Reset starter invoice quota for tenant ${org.name} (cleared ${prevCount} invoices)`,
+    });
+
+    return org;
+  }
+
+  // ==========================================
+  // MULTI-TENANT QUERY TROUBLESHOOTING
+  // ==========================================
+  public getTenantQueryLogs(): TenantQueryLog[] {
+    return this.getStorageItem<TenantQueryLog[]>(
+      STORAGE_KEYS.TENANT_QUERY_LOGS,
+      SEED_TENANT_QUERY_LOGS
+    );
+  }
+
+  public resolveTenantQuery(queryId: string, actor: User): boolean {
+    const logs = this.getTenantQueryLogs();
+    const target = logs.find(q => q.id === queryId);
+    if (!target) return false;
+
+    target.status = 'optimized';
+    target.resolutionStatus = 'resolved';
+    target.latencyMs = Math.min(target.latencyMs, 18);
+    this.setStorageItem(STORAGE_KEYS.TENANT_QUERY_LOGS, logs);
+
+    this.addAuditLog({
+      organizationId: target.organizationId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: target.organizationId,
+      status: 'success',
+      details: `Applied composite index and optimized slow query on ${target.collection} for ${target.organizationName}`,
+    });
+
+    return true;
+  }
+
+  public simulateDiagnosticQuery(orgId: string, queryType: string): TenantQueryLog {
+    const orgs = this.getInternalAllOrganizations();
+    const org = orgs.find(o => o.id === orgId) || orgs[0];
+    const latency = Math.floor(Math.random() * 200) + 25;
+    const isSlow = latency > 140;
+
+    const newLog: TenantQueryLog = {
+      id: 'tql_live_' + Math.random().toString(36).substring(2, 9),
+      timestamp: new Date().toISOString(),
+      organizationId: org.id,
+      organizationName: org.name,
+      userEmail: 'onekalitkenneth@gmail.com',
+      userRole: 'super_admin',
+      collection: queryType === 'invoices' ? 'invoices' : queryType === 'expenses' ? 'expenses' : 'clients',
+      signature: `db.collection('${queryType}').where('organizationId', '==', '${org.id}').orderBy('createdAt', 'desc')`,
+      latencyMs: latency,
+      docsScanned: isSlow ? 750 : 25,
+      docsReturned: 25,
+      status: isSlow ? 'slow_unindexed' : 'optimized',
+      resolutionStatus: isSlow ? 'open' : 'resolved',
+      suggestedIndex: isSlow
+        ? {
+            name: `idx_${queryType}_org_createdAt`,
+            fields: [
+              { field: 'organizationId', mode: 'ASCENDING' },
+              { field: 'createdAt', mode: 'DESCENDING' },
+            ],
+            firestoreJson: JSON.stringify({
+              collectionGroup: queryType,
+              queryScope: 'COLLECTION',
+              fields: [
+                { fieldPath: 'organizationId', order: 'ASCENDING' },
+                { fieldPath: 'createdAt', order: 'DESCENDING' },
+              ],
+            }, null, 2),
+            sqlStatement: `CREATE INDEX CONCURRENTLY idx_${queryType}_org_created ON ${queryType} (organization_id, created_at DESC);`,
+            reason: 'Composite filter and order-by optimization for multi-tenant partition.',
+          }
+        : undefined,
+    };
+
+    const logs = this.getTenantQueryLogs();
+    logs.unshift(newLog);
+    if (logs.length > 100) logs.length = 100;
+    this.setStorageItem(STORAGE_KEYS.TENANT_QUERY_LOGS, logs);
+
+    return newLog;
   }
 }
 

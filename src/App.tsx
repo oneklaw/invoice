@@ -25,6 +25,7 @@ import { CurrencyConverterModal } from './components/currency/CurrencyConverterM
 import { CloudSqlSnapshotSettings } from './components/database/CloudSqlSnapshotSettings';
 import { VendorManagementView } from './components/vendors/VendorManagementView';
 import { ExpenseTrackerView } from './components/expenses/ExpenseTrackerView';
+import { SaaSRevenueManagerView } from './components/saas/SaaSRevenueManagerView';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(storageService.isAuthenticated());
@@ -198,6 +199,7 @@ export default function App() {
           onSelectTab={setActiveTab}
           currentOrg={currentOrg}
           currentLang={currentLang}
+          currentUser={currentUser}
           onOpenUpgradeModal={() => {
             setUpgradeReason('manual');
             setIsUpgradeModalOpen(true);
@@ -220,6 +222,17 @@ export default function App() {
                 }}
                 onViewInvoice={(inv) => setPreviewInvoice(inv)}
                 onNavigateTab={(tab) => setActiveTab(tab)}
+              />
+            )}
+
+            {activeTab === 'saas-revenue' && (
+              <SaaSRevenueManagerView
+                currentUser={currentUser}
+                onRefresh={handleRefresh}
+                onSwitchTenant={(orgId) => {
+                  handleSelectOrg(orgId);
+                  setActiveTab('dashboard');
+                }}
               />
             )}
 

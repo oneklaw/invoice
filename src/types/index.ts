@@ -482,3 +482,46 @@ export interface ClientPortalSettings {
   showPaymentHistory: boolean;
 }
 
+// SaaS Revenue & Multi-Tenant Management
+export interface SaaSSubscriptionTransaction {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  planName: 'Pro' | 'Enterprise Pro' | 'Starter';
+  amount: number;
+  currency: string;
+  billingCycle: 'monthly' | 'annual';
+  status: 'settled' | 'pending' | 'failed';
+  paymentGateway: string;
+  transactionId: string;
+  timestamp: string;
+  invoiceCount: number;
+  cardLast4?: string;
+}
+
+// Tenant Troubleshooting & Query Diagnostics
+export interface TenantQueryLog {
+  id: string;
+  timestamp: string;
+  organizationId: string;
+  organizationName: string;
+  userEmail: string;
+  userRole: string;
+  collection: 'invoices' | 'clients' | 'vendors' | 'expenses' | 'audit_logs';
+  signature: string;
+  latencyMs: number;
+  docsScanned: number;
+  docsReturned: number;
+  status: 'slow_unindexed' | 'warning' | 'optimized';
+  errorMessage?: string;
+  suggestedIndex?: {
+    name: string;
+    fields: { field: string; mode: 'ASCENDING' | 'DESCENDING' }[];
+    firestoreJson: string;
+    sqlStatement: string;
+    reason: string;
+  };
+  resolutionStatus?: 'open' | 'investigating' | 'resolved';
+}
+
+
