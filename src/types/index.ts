@@ -77,6 +77,8 @@ export interface OrganizationSettings {
   subscriptionPeriodEnd?: string;
   cardLast4?: string;
   cardBrand?: string;
+  clientPortalSettings?: ClientPortalSettings;
+  themeMode?: 'dark' | 'light';
 }
 
 export interface GoogleDriveIntegrationSettings {
@@ -166,6 +168,27 @@ export interface Invoice {
   googleDriveLink?: string;
   googleDriveUploadedAt?: string;
 
+  // Recurring & Automation
+  isRecurring?: boolean;
+  recurringInterval?: 'daily' | 'weekly' | 'monthly';
+  recurringNextDate?: string;
+  autoSendRecurring?: boolean;
+
+  // Collaboration, Comments & Versions
+  comments?: InvoiceComment[];
+  versions?: InvoiceVersion[];
+  tags?: string[];
+
+  // Late fees & Regional Tax
+  lateFeeApplied?: number;
+  isLateFeeAssessed?: boolean;
+  regionalTaxDetails?: {
+    country: string;
+    vatRate: number;
+    vatAmount: number;
+    showBreakdown: boolean;
+  };
+
   createdAt: string;
   updatedAt: string;
 }
@@ -183,6 +206,10 @@ export interface Client {
   country: string;
   currency: string;
   totalInvoiced: number;
+  lateFeePercentage?: number;
+  lateFeeFlat?: number;
+  creditLimit?: number;
+  recommendedPaymentTerms?: string;
   createdAt: string;
 }
 
@@ -214,7 +241,9 @@ export interface AuditLog {
     | 'SNAPSHOT_SCHEDULE_UPDATED'
     | 'SNAPSHOT_CREATED'
     | 'SNAPSHOT_RESTORED'
-    | 'GOOGLE_DRIVE_SYNCED';
+    | 'GOOGLE_DRIVE_SYNCED'
+    | 'VENDOR_PAYMENT_RECONCILED'
+    | 'DOCUMENT_VERSION_RESTORED';
   resourceType: 'invoice' | 'user' | 'organization' | 'subscription' | 'api' | 'cache' | 'email' | 'report' | 'database' | 'drive';
   resourceId?: string;
   ipAddress: string;
@@ -285,3 +314,171 @@ export interface EmailNotification {
   paymentUrl?: string;
   deliveredVia: string;
 }
+
+// Invoice Commenting & Versioning
+export interface InvoiceComment {
+  id: string;
+  invoiceId: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface InvoiceVersion {
+  id: string;
+  timestamp: string;
+  authorName: string;
+  summary: string;
+  snapshot: any;
+}
+
+// Expense Tracking
+export interface Expense {
+  id: string;
+  organizationId: string;
+  title: string;
+  category: 'Software' | 'Cloud Infrastructure' | 'Office & Rent' | 'Salaries' | 'Marketing' | 'Hardware' | 'Travel' | 'Other';
+  amount: number;
+  currency: string;
+  date: string;
+  vendorId?: string;
+  vendorName?: string;
+  receiptUrl?: string;
+  notes?: string;
+  isRecurring: boolean;
+  recurringInterval?: 'monthly' | 'annual';
+  nextRecurringDate?: string;
+  status: 'logged' | 'paid' | 'scheduled';
+  createdAt: string;
+}
+
+// Inventory System
+export interface InventoryItem {
+  id: string;
+  organizationId: string;
+  sku: string;
+  name: string;
+  category: string;
+  unit: string;
+  unitCost: number;
+  sellingPrice: number;
+  currentStock: number;
+  lowStockThreshold: number;
+  department: string;
+  branch: string;
+  supplierId?: string;
+  supplierName?: string;
+  reorderQuantity: number;
+  lastRestockedAt?: string;
+  createdAt: string;
+}
+
+export interface StockMovement {
+  id: string;
+  itemId: string;
+  itemName: string;
+  organizationId: string;
+  type: 'in' | 'out' | 'transfer' | 'adjustment';
+  quantity: number;
+  date: string;
+  department: string;
+  branch: string;
+  reason: string;
+  actorName: string;
+}
+
+// Vendor Management
+export interface Vendor {
+  id: string;
+  organizationId: string;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
+  taxId?: string;
+  paymentTerms: string;
+  performanceScore: number; // 0 - 100
+  totalDisbursed: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface PurchaseOrderItem {
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  organizationId: string;
+  poNumber: string;
+  vendorId: string;
+  vendorName: string;
+  items: PurchaseOrderItem[];
+  totalAmount: number;
+  currency: string;
+  status: 'draft' | 'issued' | 'acknowledged' | 'received' | 'paid';
+  issueDate: string;
+  expectedDeliveryDate: string;
+  receivedDate?: string;
+  bankReference?: string;
+  syncedToExpense?: boolean;
+  createdAt: string;
+}
+
+export interface VendorPayment {
+  id: string;
+  organizationId: string;
+  vendorId: string;
+  vendorName: string;
+  purchaseOrderId: string;
+  amount: number;
+  currency: string;
+  paymentDate: string;
+  bankReference: string;
+  status: 'completed' | 'pending';
+}
+
+// Client Activity & Engagement
+export interface ClientActivity {
+  id: string;
+  organizationId: string;
+  clientId: string;
+  clientName: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  type: 'viewed' | 'downloaded' | 'paid' | 'portal_access';
+  timestamp: string;
+  ipAddress: string;
+  device?: string;
+}
+
+// Workflow Automator
+export interface WorkflowRule {
+  id: string;
+  organizationId: string;
+  name: string;
+  trigger: 'payment_received' | 'invoice_overdue' | 'invoice_created' | 'low_stock';
+  action: 'add_tag' | 'send_email_alert' | 'webhook_notify' | 'mark_sent';
+  actionPayload: string;
+  enabled: boolean;
+  createdAt: string;
+  executionCount: number;
+  lastExecutedAt?: string;
+}
+
+// Client Portal Customization
+export interface ClientPortalSettings {
+  logoUrl?: string;
+  primaryBrandColor: string;
+  headlineText?: string;
+  supportEmail?: string;
+  allowDownloadAll: boolean;
+  showPaymentHistory: boolean;
+}
+

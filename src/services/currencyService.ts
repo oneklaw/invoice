@@ -343,6 +343,10 @@ class CurrencyService {
     return rate;
   }
 
+  public getRate(fromCurrency: string, toCurrency: string): number {
+    return this.getExchangeRate(fromCurrency, toCurrency);
+  }
+
   public convertAmount(
     amount: number,
     fromCurrency: string,

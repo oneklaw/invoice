@@ -23,6 +23,8 @@ import { Mail, CheckCircle2, UploadCloud, ExternalLink } from 'lucide-react';
 import { CompanyCurrencyConversionModal } from './components/currency/CompanyCurrencyConversionModal';
 import { CurrencyConverterModal } from './components/currency/CurrencyConverterModal';
 import { CloudSqlSnapshotSettings } from './components/database/CloudSqlSnapshotSettings';
+import { VendorManagementView } from './components/vendors/VendorManagementView';
+import { ExpenseTrackerView } from './components/expenses/ExpenseTrackerView';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(storageService.isAuthenticated());
@@ -61,13 +63,19 @@ export default function App() {
       }
     };
 
+    const handleInvoiceRestored = () => {
+      handleRefresh();
+    };
+
     window.addEventListener('invox:email_dispatched', handleEmailDispatched);
     window.addEventListener('invox:currency_converted', handleCurrencyConverted);
     window.addEventListener('invox:drive_synced', handleDriveSynced);
+    window.addEventListener('invox:invoice_restored', handleInvoiceRestored);
     return () => {
       window.removeEventListener('invox:email_dispatched', handleEmailDispatched);
       window.removeEventListener('invox:currency_converted', handleCurrencyConverted);
       window.removeEventListener('invox:drive_synced', handleDriveSynced);
+      window.removeEventListener('invox:invoice_restored', handleInvoiceRestored);
     };
   }, []);
 
@@ -225,6 +233,22 @@ export default function App() {
                 onEditInvoice={handleEditInvoice}
                 onOpenPayModal={(inv) => setPublicPayInvoice(inv)}
                 onOpenNewInvoice={handleOpenNewInvoice}
+                onRefresh={handleRefresh}
+              />
+            )}
+
+            {activeTab === 'vendors' && (
+              <VendorManagementView
+                org={currentOrg}
+                currentUser={currentUser}
+                onRefresh={handleRefresh}
+              />
+            )}
+
+            {activeTab === 'expenses' && (
+              <ExpenseTrackerView
+                org={currentOrg}
+                currentUser={currentUser}
                 onRefresh={handleRefresh}
               />
             )}

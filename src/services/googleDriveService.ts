@@ -422,6 +422,129 @@ export class GoogleDriveService {
       folderName: designatedFolderName,
     };
   }
+
+  /**
+   * Generates a single merged multi-page PDF document containing all selected invoices
+   */
+  public generateMergedInvoicesPdfBlob(invoices: Invoice[], org: OrganizationSettings): Blob {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    invoices.forEach((inv, index) => {
+      if (index > 0) {
+        doc.addPage();
+      }
+
+      let y = 20;
+
+      // Organization Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(30, 41, 59);
+      doc.text(org.name || 'Enterprise Invoicing', 20, y);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      y += 6;
+      if (org.taxId) {
+        doc.text(`Tax ID: ${org.taxId}`, 20, y);
+        y += 5;
+      }
+      if (org.email) {
+        doc.text(`Email: ${org.email}`, 20, y);
+        y += 5;
+      }
+
+      // Invoice Meta (Top Right)
+      const rightX = pageWidth - 20;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(79, 70, 229);
+      doc.text(`INVOICE ${inv.invoiceNumber}`, rightX, 20, { align: 'right' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Status: ${inv.status.toUpperCase()}`, rightX, 26, { align: 'right' });
+      doc.text(`Issue Date: ${inv.issueDate}`, rightX, 31, { align: 'right' });
+      doc.text(`Due Date: ${inv.dueDate}`, rightX, 36, { align: 'right' });
+
+      // Client info
+      y += 10;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(20, y, rightX, y);
+      y += 6;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+      doc.text('Billed To:', 20, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(inv.clientName, 45, y);
+      y += 5;
+      if (inv.clientEmail) {
+        doc.text(inv.clientEmail, 45, y);
+        y += 5;
+      }
+      if (inv.clientAddress) {
+        doc.text(inv.clientAddress, 45, y);
+        y += 7;
+      }
+
+      // Line items table
+      doc.setFillColor(241, 245, 249);
+      doc.rect(20, y, rightX - 20, 7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text('DESCRIPTION', 23, y + 5);
+      doc.text('QTY', 110, y + 5);
+      doc.text('UNIT PRICE', 130, y + 5);
+      doc.text('AMOUNT', rightX - 3, y + 5, { align: 'right' });
+      y += 9;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30, 41, 59);
+      (inv.items || []).forEach((item) => {
+        doc.text(item.description, 23, y);
+        doc.text(String(item.quantity), 110, y);
+        doc.text(`${inv.currency} ${item.unitPrice.toLocaleString()}`, 130, y);
+        doc.text(`${inv.currency} ${item.amount.toLocaleString()}`, rightX - 3, y, { align: 'right' });
+        y += 6;
+      });
+
+      y += 4;
+      doc.line(20, y, rightX, y);
+      y += 6;
+
+      // Totals
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(79, 70, 229);
+      doc.text(`Total Due: ${inv.currency} ${inv.totalAmount.toLocaleString()}`, rightX, y, { align: 'right' });
+    });
+
+    return doc.output('blob');
+  }
+
+  public downloadMergedInvoicesPdf(invoices: Invoice[], org: OrganizationSettings): void {
+    const blob = this.generateMergedInvoicesPdfBlob(invoices, org);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Batch_Invoices_${org.slug}_${invoices.length}_records.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
 
 export const googleDriveService = new GoogleDriveService();
+

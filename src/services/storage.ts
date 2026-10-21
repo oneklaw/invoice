@@ -5,7 +5,18 @@ import {
   OrganizationSettings,
   User,
   UserRole,
-  ApiCredential
+  ApiCredential,
+  Expense,
+  InventoryItem,
+  StockMovement,
+  Vendor,
+  PurchaseOrder,
+  VendorPayment,
+  ClientActivity,
+  WorkflowRule,
+  InvoiceComment,
+  InvoiceVersion,
+  ClientPortalSettings,
 } from '../types';
 import { cacheEngine } from './cacheEngine';
 import { emailService } from './emailService';
@@ -17,6 +28,15 @@ const STORAGE_KEYS = {
   CLIENTS: 'invox_saas_clients_v3',
   AUDIT_LOGS: 'invox_saas_audit_logs_v3',
   API_KEYS: 'invox_saas_api_keys_v3',
+  EXPENSES: 'invox_saas_expenses_v3',
+  INVENTORY: 'invox_saas_inventory_v3',
+  STOCK_MOVEMENTS: 'invox_saas_stock_movements_v3',
+  VENDORS: 'invox_saas_vendors_v3',
+  PURCHASE_ORDERS: 'invox_saas_purchase_orders_v3',
+  VENDOR_PAYMENTS: 'invox_saas_vendor_payments_v3',
+  CLIENT_ACTIVITIES: 'invox_saas_client_activities_v3',
+  WORKFLOW_RULES: 'invox_saas_workflow_rules_v3',
+  CLIENT_PORTAL_SETTINGS: 'invox_saas_client_portal_settings_v3',
   ACTIVE_ORG_ID: 'invox_saas_active_org_id_v3',
   CURRENT_USER_ID: 'invox_saas_current_user_id_v3',
   AUTH_SESSION: 'invox_saas_auth_session_v3',
@@ -111,11 +131,270 @@ const INITIAL_USERS: User[] = [
   },
 ];
 
-// Zero demo records
+// Clean initial seed data
 const SEED_CLIENTS: Client[] = [];
 const SEED_INVOICES: Invoice[] = [];
 const SEED_AUDIT_LOGS: AuditLog[] = [];
 const SEED_API_KEYS: ApiCredential[] = [];
+
+const SEED_VENDORS: Vendor[] = [
+  {
+    id: 'ven_aws_cloud',
+    organizationId: 'org_enterprise_primary',
+    name: 'AWS Cloud Services UK',
+    contactPerson: 'Jeff Harrison',
+    email: 'billing@aws-services.co.uk',
+    phone: '+44 20 7946 0881',
+    address: '60 Holborn Viaduct, London EC1A 2FD',
+    taxId: 'GB-VAT-992182741',
+    paymentTerms: 'Net 30',
+    performanceScore: 98,
+    totalDisbursed: 14500,
+    notes: 'Primary cloud hosting, S3 backups, and database cluster infrastructure.',
+    createdAt: '2026-01-15T09:00:00.000Z',
+  },
+  {
+    id: 'ven_dell_ent',
+    organizationId: 'org_enterprise_primary',
+    name: 'Dell Technologies Enterprise',
+    contactPerson: 'Sarah Jenkins',
+    email: 'procurement@dell-enterprise.com',
+    phone: '+44 1344 860456',
+    address: 'Dell House, Cain Road, Bracknell RG12 1LF',
+    taxId: 'GB-VAT-445892110',
+    paymentTerms: 'Net 15',
+    performanceScore: 95,
+    totalDisbursed: 28400,
+    notes: 'Developer workstations, rack servers, and high-performance monitors.',
+    createdAt: '2026-02-10T10:30:00.000Z',
+  },
+  {
+    id: 'ven_wework_hq',
+    organizationId: 'org_enterprise_primary',
+    name: 'WeWork Office Facilities Ltd',
+    contactPerson: 'Marcus Thorne',
+    email: 'tenancy@wework-london.com',
+    phone: '+44 20 3808 7701',
+    address: '10 York Road, Waterloo, London SE1 7ND',
+    taxId: 'GB-VAT-112998432',
+    paymentTerms: 'Net 30',
+    performanceScore: 92,
+    totalDisbursed: 9200,
+    notes: 'Canary Wharf and London Waterloo executive office suites.',
+    createdAt: '2026-02-28T14:15:00.000Z',
+  },
+  {
+    id: 'ven_oracle_db',
+    organizationId: 'org_enterprise_primary',
+    name: 'Oracle Global Infrastructure',
+    contactPerson: 'Elena Rostova',
+    email: 'enterprise-billing@oracle.com',
+    phone: '+44 118 984 0000',
+    address: 'Oracle Parkway, Thames Valley Park, Reading RG6 1RA',
+    taxId: 'GB-VAT-667102948',
+    paymentTerms: 'Net 45',
+    performanceScore: 90,
+    totalDisbursed: 18000,
+    notes: 'Enterprise Cloud SQL database backup and disaster recovery redundancy.',
+    createdAt: '2026-03-01T11:00:00.000Z',
+  },
+];
+
+const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
+  {
+    id: 'po_001_dell',
+    organizationId: 'org_enterprise_primary',
+    poNumber: 'PO-2026-081',
+    vendorId: 'ven_dell_ent',
+    vendorName: 'Dell Technologies Enterprise',
+    items: [
+      { itemId: 'item_dell_serv', itemName: 'PowerEdge R750 Rack Server', quantity: 1, unitPrice: 3850, total: 3850 },
+      { itemId: 'item_dell_ram', itemName: '128GB ECC Server Memory Kit', quantity: 2, unitPrice: 500, total: 1000 },
+    ],
+    totalAmount: 4850,
+    currency: 'GBP',
+    status: 'received',
+    issueDate: '2026-10-05',
+    expectedDeliveryDate: '2026-10-12',
+    receivedDate: '2026-10-14',
+    createdAt: '2026-10-05T08:30:00.000Z',
+  },
+  {
+    id: 'po_002_aws',
+    organizationId: 'org_enterprise_primary',
+    poNumber: 'PO-2026-094',
+    vendorId: 'ven_aws_cloud',
+    vendorName: 'AWS Cloud Services UK',
+    items: [
+      { itemId: 'item_aws_compute', itemName: 'EC2 Dedicated Instances (Oct 2026)', quantity: 1, unitPrice: 1820, total: 1820 },
+      { itemId: 'item_aws_s3', itemName: 'S3 Glacier Multi-Region Replication', quantity: 1, unitPrice: 600, total: 600 },
+    ],
+    totalAmount: 2420,
+    currency: 'GBP',
+    status: 'issued',
+    issueDate: '2026-10-10',
+    expectedDeliveryDate: '2026-10-10',
+    createdAt: '2026-10-10T11:00:00.000Z',
+  },
+  {
+    id: 'po_003_wework',
+    organizationId: 'org_enterprise_primary',
+    poNumber: 'PO-2026-072',
+    vendorId: 'ven_wework_hq',
+    vendorName: 'WeWork Office Facilities Ltd',
+    items: [
+      { itemId: 'item_wework_rent', itemName: 'Canary Wharf Private Office Lease (Oct)', quantity: 1, unitPrice: 3100, total: 3100 },
+    ],
+    totalAmount: 3100,
+    currency: 'GBP',
+    status: 'issued',
+    issueDate: '2026-10-01',
+    expectedDeliveryDate: '2026-10-01',
+    createdAt: '2026-10-01T09:15:00.000Z',
+  },
+  {
+    id: 'po_004_oracle',
+    organizationId: 'org_enterprise_primary',
+    poNumber: 'PO-2026-050',
+    vendorId: 'ven_oracle_db',
+    vendorName: 'Oracle Global Infrastructure',
+    items: [
+      { itemId: 'item_oracle_db', itemName: 'Managed PostgreSQL Enterprise License (Q3)', quantity: 1, unitPrice: 6200, total: 6200 },
+    ],
+    totalAmount: 6200,
+    currency: 'GBP',
+    status: 'paid',
+    bankReference: 'WIRE-2026-ORC-9912',
+    issueDate: '2026-09-15',
+    expectedDeliveryDate: '2026-09-15',
+    receivedDate: '2026-09-15',
+    createdAt: '2026-09-15T10:00:00.000Z',
+  },
+];
+
+const SEED_VENDOR_PAYMENTS: VendorPayment[] = [
+  {
+    id: 'vp_hist_1',
+    organizationId: 'org_enterprise_primary',
+    vendorId: 'ven_dell_ent',
+    vendorName: 'Dell Technologies Enterprise',
+    purchaseOrderId: 'po_archived_1',
+    amount: 12000,
+    currency: 'GBP',
+    paymentDate: '2026-08-20',
+    bankReference: 'WIRE-BARC-892110',
+    status: 'completed',
+  },
+  {
+    id: 'vp_hist_2',
+    organizationId: 'org_enterprise_primary',
+    vendorId: 'ven_aws_cloud',
+    vendorName: 'AWS Cloud Services UK',
+    purchaseOrderId: 'po_archived_2',
+    amount: 5400,
+    currency: 'GBP',
+    paymentDate: '2026-08-30',
+    bankReference: 'CHAPS-2026-44102',
+    status: 'completed',
+  },
+  {
+    id: 'vp_hist_3',
+    organizationId: 'org_enterprise_primary',
+    vendorId: 'ven_dell_ent',
+    vendorName: 'Dell Technologies Enterprise',
+    purchaseOrderId: 'po_archived_3',
+    amount: 16400,
+    currency: 'GBP',
+    paymentDate: '2026-09-12',
+    bankReference: 'BACS-899120',
+    status: 'completed',
+  },
+  {
+    id: 'vp_hist_4',
+    organizationId: 'org_enterprise_primary',
+    vendorId: 'ven_wework_hq',
+    vendorName: 'WeWork Office Facilities Ltd',
+    purchaseOrderId: 'po_archived_4',
+    amount: 6100,
+    currency: 'GBP',
+    paymentDate: '2026-09-28',
+    bankReference: 'CHAPS-2026-55190',
+    status: 'completed',
+  },
+  {
+    id: 'vp_hist_5',
+    organizationId: 'org_enterprise_primary',
+    vendorId: 'ven_oracle_db',
+    vendorName: 'Oracle Global Infrastructure',
+    purchaseOrderId: 'po_004_oracle',
+    amount: 6200,
+    currency: 'GBP',
+    paymentDate: '2026-10-15',
+    bankReference: 'WIRE-2026-ORC-9912',
+    status: 'completed',
+  },
+];
+
+const SEED_EXPENSES: Expense[] = [
+  {
+    id: 'exp_001',
+    organizationId: 'org_enterprise_primary',
+    title: 'AWS Cloud Infrastructure - Multi-Region Cluster',
+    category: 'Cloud Infrastructure',
+    amount: 2420,
+    currency: 'GBP',
+    date: '2026-10-01',
+    vendorId: 'ven_aws_cloud',
+    vendorName: 'AWS Cloud Services UK',
+    isRecurring: true,
+    status: 'logged',
+    notes: 'Monthly EC2, S3, and CloudFront CDN bandwidth costs.',
+    createdAt: '2026-10-01T08:00:00.000Z',
+  },
+  {
+    id: 'exp_002',
+    organizationId: 'org_enterprise_primary',
+    title: 'Canary Wharf Headquarters Office Rent',
+    category: 'Office & Rent',
+    amount: 3100,
+    currency: 'GBP',
+    date: '2026-10-05',
+    vendorId: 'ven_wework_hq',
+    vendorName: 'WeWork Office Facilities Ltd',
+    isRecurring: true,
+    status: 'logged',
+    notes: 'Q4 Canary Wharf 20-person executive suite license.',
+    createdAt: '2026-10-05T09:30:00.000Z',
+  },
+  {
+    id: 'exp_003',
+    organizationId: 'org_enterprise_primary',
+    title: 'Engineering Dell Workstation Servers',
+    category: 'Hardware',
+    amount: 4850,
+    currency: 'GBP',
+    date: '2026-10-14',
+    vendorId: 'ven_dell_ent',
+    vendorName: 'Dell Technologies Enterprise',
+    isRecurring: false,
+    status: 'logged',
+    notes: 'PowerEdge R750 server with ECC memory for on-prem CI/CD pipeline.',
+    createdAt: '2026-10-14T15:20:00.000Z',
+  },
+  {
+    id: 'exp_004',
+    organizationId: 'org_enterprise_primary',
+    title: 'GitHub Enterprise & Figma Organization Licenses',
+    category: 'Software',
+    amount: 680,
+    currency: 'GBP',
+    date: '2026-10-16',
+    isRecurring: true,
+    status: 'logged',
+    notes: '25 developer seat subscription seats.',
+    createdAt: '2026-10-16T12:00:00.000Z',
+  },
+];
 
 class StorageService {
   private getStorageItem<T>(key: string, defaultVal: T): T {
@@ -172,6 +451,18 @@ class StorageService {
     }
     if (!localStorage.getItem(STORAGE_KEYS.API_KEYS)) {
       this.setStorageItem(STORAGE_KEYS.API_KEYS, SEED_API_KEYS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.VENDORS)) {
+      this.setStorageItem(STORAGE_KEYS.VENDORS, SEED_VENDORS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.PURCHASE_ORDERS)) {
+      this.setStorageItem(STORAGE_KEYS.PURCHASE_ORDERS, SEED_PURCHASE_ORDERS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.VENDOR_PAYMENTS)) {
+      this.setStorageItem(STORAGE_KEYS.VENDOR_PAYMENTS, SEED_VENDOR_PAYMENTS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.EXPENSES)) {
+      this.setStorageItem(STORAGE_KEYS.EXPENSES, SEED_EXPENSES);
     }
     if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_ORG_ID)) {
       this.setStorageItem(STORAGE_KEYS.ACTIVE_ORG_ID, 'org_enterprise_primary');
@@ -1254,6 +1545,642 @@ class StorageService {
 
     // Establish session for this new independent tenant organization
     return this.establishSession(newUser, true);
+  }
+
+  // ==========================================
+  // EXPENSE TRACKING
+  // ==========================================
+  public getExpenses(orgId: string): Expense[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    const all = this.getStorageItem<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+    return all.filter(e => e.organizationId === orgId);
+  }
+
+  public saveExpense(expense: Expense, actor?: User): void {
+    const activeOrgId = this.getActiveOrgId();
+    if (expense.organizationId !== activeOrgId) return;
+
+    const all = this.getStorageItem<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+    const idx = all.findIndex(e => e.id === expense.id);
+    if (idx >= 0) {
+      all[idx] = expense;
+    } else {
+      all.unshift(expense);
+    }
+    this.setStorageItem(STORAGE_KEYS.EXPENSES, all);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: expense.organizationId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        resourceId: expense.id,
+        status: 'success',
+        details: `Recorded operational expense: ${expense.title} (${expense.currency} ${expense.amount.toLocaleString()}) [${expense.category}]`,
+      });
+    }
+  }
+
+  public deleteExpense(id: string, orgId: string, actor?: User): boolean {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return false;
+
+    const all = this.getStorageItem<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+    const exp = all.find(e => e.id === id && e.organizationId === orgId);
+    if (!exp) return false;
+
+    const filtered = all.filter(e => e.id !== id);
+    this.setStorageItem(STORAGE_KEYS.EXPENSES, filtered);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: orgId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        resourceId: id,
+        status: 'warning',
+        details: `Deleted operational expense record '${exp.title}'`,
+      });
+    }
+    return true;
+  }
+
+  public getUpcomingRecurringExpenseAlerts(orgId: string): Expense[] {
+    const expenses = this.getExpenses(orgId);
+    const now = new Date();
+    const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+    return expenses.filter(e => {
+      if (!e.isRecurring || !e.nextRecurringDate) return false;
+      const nextDate = new Date(e.nextRecurringDate);
+      return nextDate >= now && nextDate <= threeDaysLater;
+    });
+  }
+
+  // ==========================================
+  // INVENTORY & STOCK MANAGEMENT
+  // ==========================================
+  public getInventoryItems(orgId: string): InventoryItem[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    return this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []).filter(i => i.organizationId === orgId);
+  }
+
+  public saveInventoryItem(item: InventoryItem, actor?: User): void {
+    const activeOrgId = this.getActiveOrgId();
+    if (item.organizationId !== activeOrgId) return;
+
+    const all = this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []);
+    const idx = all.findIndex(i => i.id === item.id);
+    if (idx >= 0) {
+      all[idx] = item;
+    } else {
+      all.unshift(item);
+    }
+    this.setStorageItem(STORAGE_KEYS.INVENTORY, all);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: item.organizationId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        resourceId: item.id,
+        status: 'success',
+        details: `Updated inventory item: ${item.name} (${item.sku}), stock: ${item.currentStock} ${item.unit}`,
+      });
+    }
+  }
+
+  public deleteInventoryItem(id: string, orgId: string, actor?: User): boolean {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return false;
+
+    const all = this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []);
+    const filtered = all.filter(i => !(i.id === id && i.organizationId === orgId));
+    this.setStorageItem(STORAGE_KEYS.INVENTORY, filtered);
+    return true;
+  }
+
+  public getStockMovements(orgId: string): StockMovement[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    return this.getStorageItem<StockMovement[]>(STORAGE_KEYS.STOCK_MOVEMENTS, []).filter(m => m.organizationId === orgId);
+  }
+
+  public recordStockMovement(movement: StockMovement, actor?: User): void {
+    const all = this.getStorageItem<StockMovement[]>(STORAGE_KEYS.STOCK_MOVEMENTS, []);
+    all.unshift(movement);
+    this.setStorageItem(STORAGE_KEYS.STOCK_MOVEMENTS, all);
+
+    // Update item stock count
+    const items = this.getInventoryItems(movement.organizationId);
+    const item = items.find(i => i.id === movement.itemId);
+    if (item) {
+      if (movement.type === 'in') {
+        item.currentStock += movement.quantity;
+      } else if (movement.type === 'out') {
+        item.currentStock = Math.max(0, item.currentStock - movement.quantity);
+      }
+      this.saveInventoryItem(item, actor);
+    }
+  }
+
+  public getLowStockItems(orgId: string): InventoryItem[] {
+    const items = this.getInventoryItems(orgId);
+    return items.filter(i => i.currentStock <= i.lowStockThreshold);
+  }
+
+  // ==========================================
+  // VENDOR MANAGEMENT & PURCHASE ORDERS
+  // ==========================================
+  public getVendors(orgId: string): Vendor[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    return this.getStorageItem<Vendor[]>(STORAGE_KEYS.VENDORS, []).filter(v => v.organizationId === orgId);
+  }
+
+  public saveVendor(vendor: Vendor, actor?: User): void {
+    const activeOrgId = this.getActiveOrgId();
+    if (vendor.organizationId !== activeOrgId) return;
+
+    const all = this.getStorageItem<Vendor[]>(STORAGE_KEYS.VENDORS, []);
+    const idx = all.findIndex(v => v.id === vendor.id);
+    if (idx >= 0) {
+      all[idx] = vendor;
+    } else {
+      all.unshift(vendor);
+    }
+    this.setStorageItem(STORAGE_KEYS.VENDORS, all);
+  }
+
+  public deleteVendor(id: string, orgId: string, actor?: User): boolean {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return false;
+
+    const all = this.getStorageItem<Vendor[]>(STORAGE_KEYS.VENDORS, []);
+    const filtered = all.filter(v => !(v.id === id && v.organizationId === orgId));
+    this.setStorageItem(STORAGE_KEYS.VENDORS, filtered);
+    return true;
+  }
+
+  public getPurchaseOrders(orgId: string): PurchaseOrder[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    return this.getStorageItem<PurchaseOrder[]>(STORAGE_KEYS.PURCHASE_ORDERS, []).filter(po => po.organizationId === orgId);
+  }
+
+  public savePurchaseOrder(po: PurchaseOrder, actor?: User): void {
+    const activeOrgId = this.getActiveOrgId();
+    if (po.organizationId !== activeOrgId) return;
+
+    const all = this.getStorageItem<PurchaseOrder[]>(STORAGE_KEYS.PURCHASE_ORDERS, []);
+    const idx = all.findIndex(p => p.id === po.id);
+    if (idx >= 0) {
+      all[idx] = po;
+    } else {
+      all.unshift(po);
+    }
+    this.setStorageItem(STORAGE_KEYS.PURCHASE_ORDERS, all);
+  }
+
+  /**
+   * Receives a Purchase Order: Auto-updates inventory stock and syncs with expense tracker
+   */
+  public receivePurchaseOrder(poId: string, orgId: string, actor?: User): boolean {
+    const pos = this.getPurchaseOrders(orgId);
+    const po = pos.find(p => p.id === poId);
+    if (!po) return false;
+
+    po.status = 'received';
+    po.receivedDate = new Date().toISOString();
+    this.savePurchaseOrder(po, actor);
+
+    // Auto-update stock for each item in the PO
+    const items = this.getInventoryItems(orgId);
+    for (const poItem of po.items) {
+      const invItem = items.find(i => i.id === poItem.itemId || i.name.toLowerCase() === poItem.itemName.toLowerCase());
+      if (invItem) {
+        invItem.currentStock += poItem.quantity;
+        invItem.lastRestockedAt = new Date().toISOString();
+        this.saveInventoryItem(invItem, actor);
+
+        this.recordStockMovement({
+          id: 'sm_' + Math.random().toString(36).substr(2, 7),
+          itemId: invItem.id,
+          itemName: invItem.name,
+          organizationId: orgId,
+          type: 'in',
+          quantity: poItem.quantity,
+          date: new Date().toISOString(),
+          department: invItem.department || 'Operations',
+          branch: invItem.branch || 'Main HQ',
+          reason: `PO #${po.poNumber} received from ${po.vendorName}`,
+          actorName: actor?.name || 'Automated Pipeline',
+        }, actor);
+      }
+    }
+
+    // Sync with Expense Tracker if not already synced
+    if (!po.syncedToExpense) {
+      const newExpense: Expense = {
+        id: 'exp_po_' + po.id,
+        organizationId: orgId,
+        title: `PO #${po.poNumber} - ${po.vendorName} Goods Delivery`,
+        category: 'Hardware',
+        amount: po.totalAmount,
+        currency: po.currency,
+        date: new Date().toISOString().split('T')[0],
+        vendorId: po.vendorId,
+        vendorName: po.vendorName,
+        isRecurring: false,
+        status: 'logged',
+        createdAt: new Date().toISOString(),
+      };
+      this.saveExpense(newExpense, actor);
+      po.syncedToExpense = true;
+      this.savePurchaseOrder(po, actor);
+    }
+
+    return true;
+  }
+
+  public getVendorPayments(orgId: string): VendorPayment[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    return this.getStorageItem<VendorPayment[]>(STORAGE_KEYS.VENDOR_PAYMENTS, []).filter(vp => vp.organizationId === orgId);
+  }
+
+  public recordVendorPayment(payment: VendorPayment, actor?: User): void {
+    const all = this.getStorageItem<VendorPayment[]>(STORAGE_KEYS.VENDOR_PAYMENTS, []);
+    all.unshift(payment);
+    this.setStorageItem(STORAGE_KEYS.VENDOR_PAYMENTS, all);
+
+    // Update vendor total disbursed
+    const vendors = this.getVendors(payment.organizationId);
+    const vendor = vendors.find(v => v.id === payment.vendorId);
+    if (vendor) {
+      vendor.totalDisbursed = (vendor.totalDisbursed || 0) + payment.amount;
+      this.saveVendor(vendor, actor);
+    }
+
+    // Mark PO paid if linked
+    if (payment.purchaseOrderId) {
+      const pos = this.getPurchaseOrders(payment.organizationId);
+      const po = pos.find(p => p.id === payment.purchaseOrderId);
+      if (po) {
+        po.status = 'paid';
+        po.bankReference = payment.bankReference;
+        this.savePurchaseOrder(po, actor);
+      }
+    }
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: payment.organizationId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'VENDOR_PAYMENT_RECONCILED',
+        resourceType: 'organization',
+        resourceId: payment.id,
+        status: 'success',
+        details: `Reconciled supplier disbursement of ${payment.currency} ${payment.amount.toLocaleString()} to ${payment.vendorName} via bank transfer ref: ${payment.bankReference}`,
+      });
+    }
+  }
+
+  public bulkImportVendors(vendors: Vendor[], actor?: User): { count: number; updated: number } {
+    const activeOrgId = this.getActiveOrgId();
+    const all = this.getStorageItem<Vendor[]>(STORAGE_KEYS.VENDORS, []);
+    let newCount = 0;
+    let updatedCount = 0;
+
+    for (const v of vendors) {
+      if (v.organizationId !== activeOrgId) continue;
+      const idx = all.findIndex(existing => existing.id === v.id || (existing.name.toLowerCase() === v.name.toLowerCase() && existing.organizationId === v.organizationId));
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], ...v };
+        updatedCount++;
+      } else {
+        all.unshift(v);
+        newCount++;
+      }
+    }
+
+    this.setStorageItem(STORAGE_KEYS.VENDORS, all);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: activeOrgId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        status: 'success',
+        details: `Bulk imported ${newCount} new suppliers and updated ${updatedCount} existing records via CSV`,
+      });
+    }
+
+    return { count: newCount, updated: updatedCount };
+  }
+
+  public bulkImportVendorPayments(payments: VendorPayment[], actor?: User): { count: number } {
+    const activeOrgId = this.getActiveOrgId();
+    const all = this.getStorageItem<VendorPayment[]>(STORAGE_KEYS.VENDOR_PAYMENTS, []);
+    let imported = 0;
+
+    for (const p of payments) {
+      if (p.organizationId !== activeOrgId) continue;
+      all.unshift(p);
+      imported++;
+
+      // Update vendor total disbursed
+      const vendors = this.getVendors(p.organizationId);
+      const vendor = vendors.find(v => v.id === p.vendorId || v.name.toLowerCase() === p.vendorName.toLowerCase());
+      if (vendor) {
+        vendor.totalDisbursed = (vendor.totalDisbursed || 0) + p.amount;
+        this.saveVendor(vendor, actor);
+      }
+    }
+
+    this.setStorageItem(STORAGE_KEYS.VENDOR_PAYMENTS, all);
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: activeOrgId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        status: 'success',
+        details: `Bulk imported ${imported} historical supplier bank transfer payments via CSV`,
+      });
+    }
+
+    return { count: imported };
+  }
+
+  // ==========================================
+  // CLIENT ACTIVITY FEED & ENGAGEMENT
+  // ==========================================
+  public getClientActivities(orgId: string, clientId?: string): ClientActivity[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    const all = this.getStorageItem<ClientActivity[]>(STORAGE_KEYS.CLIENT_ACTIVITIES, []);
+    let filtered = all.filter(a => a.organizationId === orgId);
+    if (clientId) {
+      filtered = filtered.filter(a => a.clientId === clientId);
+    }
+    return filtered;
+  }
+
+  public recordClientActivity(activity: Omit<ClientActivity, 'id' | 'timestamp'>): void {
+    const all = this.getStorageItem<ClientActivity[]>(STORAGE_KEYS.CLIENT_ACTIVITIES, []);
+    const entry: ClientActivity = {
+      ...activity,
+      id: 'act_' + Math.random().toString(36).substr(2, 7),
+      timestamp: new Date().toISOString(),
+    };
+    all.unshift(entry);
+    if (all.length > 500) all.length = 500;
+    this.setStorageItem(STORAGE_KEYS.CLIENT_ACTIVITIES, all);
+  }
+
+  // ==========================================
+  // WORKFLOW AUTOMATOR
+  // ==========================================
+  public getWorkflowRules(orgId: string): WorkflowRule[] {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return [];
+    return this.getStorageItem<WorkflowRule[]>(STORAGE_KEYS.WORKFLOW_RULES, []).filter(r => r.organizationId === orgId);
+  }
+
+  public saveWorkflowRule(rule: WorkflowRule, actor?: User): void {
+    const activeOrgId = this.getActiveOrgId();
+    if (rule.organizationId !== activeOrgId) return;
+
+    const all = this.getStorageItem<WorkflowRule[]>(STORAGE_KEYS.WORKFLOW_RULES, []);
+    const idx = all.findIndex(r => r.id === rule.id);
+    if (idx >= 0) {
+      all[idx] = rule;
+    } else {
+      all.unshift(rule);
+    }
+    this.setStorageItem(STORAGE_KEYS.WORKFLOW_RULES, all);
+  }
+
+  public deleteWorkflowRule(id: string, orgId: string): boolean {
+    const activeOrgId = this.getActiveOrgId();
+    if (orgId !== activeOrgId) return false;
+
+    const all = this.getStorageItem<WorkflowRule[]>(STORAGE_KEYS.WORKFLOW_RULES, []);
+    const filtered = all.filter(r => !(r.id === id && r.organizationId === orgId));
+    this.setStorageItem(STORAGE_KEYS.WORKFLOW_RULES, filtered);
+    return true;
+  }
+
+  public triggerWorkflow(trigger: 'payment_received' | 'invoice_overdue' | 'invoice_created' | 'low_stock', orgId: string, payload: any): void {
+    const rules = this.getWorkflowRules(orgId).filter(r => r.enabled && r.trigger === trigger);
+    for (const rule of rules) {
+      rule.executionCount = (rule.executionCount || 0) + 1;
+      rule.lastExecutedAt = new Date().toISOString();
+      this.saveWorkflowRule(rule);
+
+      if (rule.action === 'add_tag' && payload?.invoiceId) {
+        const invoices = this.getInvoices(orgId);
+        const inv = invoices.find(i => i.id === payload.invoiceId);
+        if (inv) {
+          inv.tags = Array.from(new Set([...(inv.tags || []), rule.actionPayload]));
+          this.saveInvoice(inv);
+        }
+      }
+    }
+  }
+
+  // ==========================================
+  // INVOICE COLLABORATION, COMMENTS & VERSIONS
+  // ==========================================
+  public addInvoiceComment(invoiceId: string, orgId: string, text: string, actor: User): InvoiceComment {
+    const inv = this.getInvoiceById(invoiceId, orgId);
+    if (!inv) throw new Error('Invoice not found');
+
+    const comment: InvoiceComment = {
+      id: 'cmt_' + Math.random().toString(36).substr(2, 7),
+      invoiceId,
+      authorId: actor.id,
+      authorName: actor.name,
+      text,
+      createdAt: new Date().toISOString(),
+    };
+
+    inv.comments = [...(inv.comments || []), comment];
+    this.saveInvoice(inv);
+    return comment;
+  }
+
+  public saveInvoiceVersion(invoiceId: string, orgId: string, summary: string, actor: User): InvoiceVersion {
+    const inv = this.getInvoiceById(invoiceId, orgId);
+    if (!inv) throw new Error('Invoice not found');
+
+    const version: InvoiceVersion = {
+      id: 'ver_' + Math.random().toString(36).substr(2, 7),
+      timestamp: new Date().toISOString(),
+      authorName: actor.name,
+      summary,
+      snapshot: JSON.parse(JSON.stringify(inv)),
+    };
+
+    inv.versions = [...(inv.versions || []), version];
+    this.saveInvoice(inv);
+    return version;
+  }
+
+  public restoreInvoiceVersion(invoiceId: string, orgId: string, versionId: string, actor: User): boolean {
+    const inv = this.getInvoiceById(invoiceId, orgId);
+    if (!inv || !inv.versions) return false;
+
+    const ver = inv.versions.find(v => v.id === versionId);
+    if (!ver || !ver.snapshot) return false;
+
+    const restored: Invoice = {
+      ...ver.snapshot,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.saveInvoice(restored, actor);
+    return true;
+  }
+
+  public bulkTagInvoices(invoiceIds: string[], orgId: string, tag: string, actor?: User): boolean {
+    const all = this.getInvoices(orgId);
+    for (const inv of all) {
+      if (invoiceIds.includes(inv.id)) {
+        inv.tags = Array.from(new Set([...(inv.tags || []), tag]));
+        this.saveInvoice(inv, actor);
+      }
+    }
+    return true;
+  }
+
+  // ==========================================
+  // AUTOMATED LATE FEES & BANK RECONCILIATION
+  // ==========================================
+  public assessLateFees(orgId: string, actor?: User): { assessedCount: number; totalFeeAdded: number } {
+    const invoices = this.getInvoices(orgId);
+    const clients = this.getClients(orgId);
+    const now = new Date();
+    let assessedCount = 0;
+    let totalFeeAdded = 0;
+
+    for (const inv of invoices) {
+      if ((inv.status === 'sent' || inv.status === 'overdue') && !inv.isLateFeeAssessed) {
+        const dueDate = new Date(inv.dueDate);
+        if (dueDate < now) {
+          const client = clients.find(c => c.id === inv.clientId);
+          const percent = client?.lateFeePercentage || 5; // default 5%
+          const flat = client?.lateFeeFlat || 0;
+          const fee = Number(((inv.subtotal * (percent / 100)) + flat).toFixed(2));
+
+          inv.status = 'overdue';
+          inv.lateFeeApplied = fee;
+          inv.isLateFeeAssessed = true;
+          inv.totalAmount = Number((inv.totalAmount + fee).toFixed(2));
+          inv.items.push({
+            id: 'late_fee_' + inv.id,
+            description: `Automated Late Payment Assessment (${percent}% penalty)`,
+            quantity: 1,
+            unitPrice: fee,
+            taxRate: 0,
+            discountRate: 0,
+            amount: fee,
+          });
+
+          this.saveInvoice(inv, actor);
+          assessedCount++;
+          totalFeeAdded += fee;
+        }
+      }
+    }
+
+    return { assessedCount, totalFeeAdded };
+  }
+
+  public simulateBankFeedMatch(orgId: string, actor?: User): {
+    matchedCount: number;
+    matchedInvoices: Invoice[];
+    totalMatched: number;
+  } {
+    const openInvoices = this.getInvoices(orgId).filter(i => i.status === 'sent' || i.status === 'overdue');
+    const matched: Invoice[] = [];
+    let total = 0;
+
+    // Match top eligible invoices
+    for (const inv of openInvoices.slice(0, 2)) {
+      this.markInvoicePaid(inv.id, orgId, 'Stripe Bank Settlement (Instant Match)', actor || this.getCurrentUser());
+      matched.push(inv);
+      total += inv.totalAmount;
+      this.triggerWorkflow('payment_received', orgId, { invoiceId: inv.id, amount: inv.totalAmount });
+    }
+
+    return {
+      matchedCount: matched.length,
+      matchedInvoices: matched,
+      totalMatched: total,
+    };
+  }
+
+  // ==========================================
+  // SHARED PUBLIC CLIENT PORTAL DATA ACCESS
+  // ==========================================
+  public getPublicClientPortalData(clientId: string): {
+    client?: Client;
+    org?: OrganizationSettings;
+    invoices: Invoice[];
+    payments: { date: string; amount: number; method: string; invoiceNo: string }[];
+  } {
+    const allClients = this.getStorageItem<Client[]>(STORAGE_KEYS.CLIENTS, []);
+    const client = allClients.find(c => c.id === clientId);
+    if (!client) return { invoices: [], payments: [] };
+
+    const orgs = this.getInternalAllOrganizations();
+    const org = orgs.find(o => o.id === client.organizationId);
+
+    const allInvoices = this.getStorageItem<Invoice[]>(STORAGE_KEYS.INVOICES, []);
+    const clientInvoices = allInvoices.filter(i => i.clientId === clientId && i.organizationId === client.organizationId);
+
+    const payments = clientInvoices
+      .filter(i => i.status === 'paid' && i.paidAt)
+      .map(i => ({
+        date: i.paidAt || i.updatedAt,
+        amount: i.totalAmount,
+        method: i.paymentMethodUsed || 'Direct Transfer',
+        invoiceNo: i.invoiceNumber,
+      }));
+
+    return {
+      client,
+      org,
+      invoices: clientInvoices,
+      payments,
+    };
   }
 }
 

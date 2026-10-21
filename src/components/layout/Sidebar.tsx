@@ -12,6 +12,8 @@ import {
   Sparkles,
   Mail,
   Database,
+  Building2,
+  DollarSign,
 } from 'lucide-react';
 import { OrganizationSettings, SupportedLanguage } from '../../types';
 import { translations } from '../../i18n/translations';
@@ -39,6 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
     { id: 'invoices', label: t.invoices, icon: FileText },
+    { id: 'vendors', label: 'Vendors & Payments', icon: Building2 },
+    { id: 'expenses', label: 'Expense Tracker', icon: DollarSign },
     { id: 'emails', label: t.emailNotifications, icon: Mail },
     { id: 'clients', label: t.clients, icon: Users },
     { id: 'branding', label: t.brandingSettings, icon: Palette },
