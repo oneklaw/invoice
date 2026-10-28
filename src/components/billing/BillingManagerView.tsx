@@ -97,7 +97,7 @@ export const BillingManagerView: React.FC<BillingManagerViewProps> = ({
           <div>
             <div className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Current Tier</div>
             <div className="text-2xl font-bold text-white mt-1">
-              {isPro ? 'Invox Enterprise Pro' : 'Free Starter Tier'}
+              {isPro ? 'KERO INVOICE Enterprise Pro' : 'Free Starter Tier'}
             </div>
             <p className="text-xs text-slate-400 mt-1 max-w-lg">
               {isPro

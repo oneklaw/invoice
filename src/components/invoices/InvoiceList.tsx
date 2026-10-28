@@ -23,12 +23,17 @@ import {
   AlertCircle,
   X,
   Receipt,
+  FileSpreadsheet,
+  ChevronDown,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
 import { storageService } from '../../services/storage';
 import { emailService } from '../../services/emailService';
 import { googleDriveService } from '../../services/googleDriveService';
+import { pdfExportService } from '../../services/pdfExportService';
 import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface InvoiceListProps {
@@ -66,6 +71,8 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const [isBulkTagModalOpen, setIsBulkTagModalOpen] = useState(false);
   const [newTagInput, setNewTagInput] = useState('');
   const [receiptModalInvoice, setReceiptModalInvoice] = useState<Invoice | null>(null);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [exportLoadingMsg, setExportLoadingMsg] = useState<string | null>(null);
 
   const canEdit = ['super_admin', 'org_admin', 'invoice_editor'].includes(currentUser.role);
 
@@ -140,12 +147,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     onRefresh();
   };
 
-  // Batch Download as Merged PDF
-  const handleBatchDownloadPdf = () => {
-    const selected = invoices.filter((i) => selectedInvoiceIds.includes(i.id));
-    if (selected.length === 0) return;
-
-    googleDriveService.downloadMergedInvoicesPdf(selected, org);
+  // Export Data to CSV
+  const handleExportCsv = (customList?: Invoice[]) => {
+    const listToExport = customList || filteredInvoices;
+    if (listToExport.length === 0) {
+      alert('No invoice records to export.');
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    const filename = `Invoices_Export_${org.slug || 'export'}_${today}.csv`;
+    pdfExportService.exportInvoicesToCsv(listToExport, filename);
+    
     storageService.addAuditLog({
       organizationId: org.id,
       actorId: currentUser.id,
@@ -155,8 +167,94 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       action: 'DATA_EXPORTED',
       resourceType: 'invoice',
       status: 'success',
-      details: `Exported batch merged PDF containing ${selected.length} invoice records`,
+      details: `Exported ${listToExport.length} invoices to CSV spreadsheet (${filename})`,
     });
+    setIsExportMenuOpen(false);
+  };
+
+  // Export Summary Ledger PDF
+  const handleExportSummaryPdf = () => {
+    if (filteredInvoices.length === 0) {
+      alert('No invoice records to export.');
+      return;
+    }
+    setExportLoadingMsg('Generating executive financial ledger PDF...');
+    try {
+      pdfExportService.exportInvoicesSummaryPdf(filteredInvoices, org);
+      storageService.addAuditLog({
+        organizationId: org.id,
+        actorId: currentUser.id,
+        actorName: currentUser.name,
+        actorEmail: currentUser.email,
+        actorRole: currentUser.role,
+        action: 'DATA_EXPORTED',
+        resourceType: 'invoice',
+        status: 'success',
+        details: `Generated executive financial ledger A4 PDF for ${filteredInvoices.length} invoices`,
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate summary PDF report.');
+    } finally {
+      setExportLoadingMsg(null);
+      setIsExportMenuOpen(false);
+    }
+  };
+
+  // Batch Download as Merged A4 PDF
+  const handleBatchDownloadPdf = async (customList?: Invoice[]) => {
+    const targets = customList || invoices.filter((i) => selectedInvoiceIds.includes(i.id));
+    if (targets.length === 0) {
+      alert('No invoices selected.');
+      return;
+    }
+
+    setExportLoadingMsg(`Compiling ${targets.length} invoices into A4 PDF document...`);
+    try {
+      await pdfExportService.exportMergedInvoicesPdf(targets, org);
+      storageService.addAuditLog({
+        organizationId: org.id,
+        actorId: currentUser.id,
+        actorName: currentUser.name,
+        actorEmail: currentUser.email,
+        actorRole: currentUser.role,
+        action: 'DATA_EXPORTED',
+        resourceType: 'invoice',
+        status: 'success',
+        details: `Exported batch merged A4 PDF containing ${targets.length} invoice records`,
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate merged PDF.');
+    } finally {
+      setExportLoadingMsg(null);
+      setIsExportMenuOpen(false);
+    }
+  };
+
+  // Direct single invoice A4 PDF download
+  const handleExportSingleInvoicePdf = async (inv: Invoice) => {
+    setExportLoadingMsg(`Exporting A4 PDF for ${inv.invoiceNumber}...`);
+    try {
+      await pdfExportService.exportInvoiceToA4Pdf(inv, org);
+      storageService.addAuditLog({
+        organizationId: org.id,
+        actorId: currentUser.id,
+        actorName: currentUser.name,
+        actorEmail: currentUser.email,
+        actorRole: currentUser.role,
+        action: 'DATA_EXPORTED',
+        resourceType: 'invoice',
+        resourceId: inv.id,
+        status: 'success',
+        details: `Exported full A4 ISO 216 PDF for Invoice ${inv.invoiceNumber} with QR verification`,
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export invoice PDF.');
+    } finally {
+      setExportLoadingMsg(null);
+    }
   };
 
   // Bulk Tagging
@@ -244,11 +342,72 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             <span aria-hidden="true">·</span>
             <span>{invoices.length} Total Issued</span>
             <span aria-hidden="true">·</span>
-            <span className="text-emerald-400 font-medium">Strict Tenant Isolation Active</span>
+            <span className="text-emerald-400 font-medium">Tenant Isolated</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Direct Export to CSV Button */}
+          <button
+            onClick={() => handleExportCsv()}
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 hover:text-white border border-slate-700 rounded-lg shadow-sm transition-colors whitespace-nowrap cursor-pointer"
+            title="Export filtered invoices to RFC 4180 CSV spreadsheet"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Export to CSV</span>
+          </button>
+
+          {/* Export Data Dropdown (CSV, Summary Ledger PDF, Merged Invoices PDF) */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg shadow-sm transition-colors whitespace-nowrap"
+              title="Export filtered invoice data to CSV spreadsheet or A4 PDF ledger"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Export Data</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-60 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95">
+                <div className="px-3 py-1.5 text-[10px] uppercase font-mono text-slate-400 tracking-wider border-b border-slate-800/80 mb-1">
+                  Data & Report Export
+                </div>
+                <button
+                  onClick={() => handleExportCsv()}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left text-slate-200 hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-white">Export to CSV (.csv)</div>
+                    <div className="text-[10px] text-slate-400">RFC 4180 spreadsheet format ({filteredInvoices.length} rows)</div>
+                  </div>
+                </button>
+                <button
+                  onClick={handleExportSummaryPdf}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left text-slate-200 hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-white">Summary Ledger (.pdf)</div>
+                    <div className="text-[10px] text-slate-400">Executive A4 balance & revenue report</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleBatchDownloadPdf(filteredInvoices)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left text-slate-200 hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                  <Download className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-white">Merged Invoices (.pdf)</div>
+                    <div className="text-[10px] text-slate-400">Multi-page printable ISO 216 bundle</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onOpenNewInvoice}
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors whitespace-nowrap"
@@ -259,9 +418,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
         </div>
       </div>
 
+      {/* Export progress toast / status */}
+      {exportLoadingMsg && (
+        <div className="fixed top-16 right-6 z-50 bg-slate-900 border border-indigo-500/80 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs animate-in slide-in-from-top-4">
+          <Loader2 className="w-4 h-4 text-indigo-400 animate-spin shrink-0" />
+          <span>{exportLoadingMsg}</span>
+        </div>
+      )}
+
       {/* Batch Action Toolbar when items selected */}
       {selectedInvoiceIds.length > 0 && (
-        <div className="p-3 bg-indigo-950/70 border border-indigo-700/80 rounded-xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in">
+        <div className="p-3 bg-slate-900 border border-indigo-700/80 rounded-xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in">
           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-200">
             <span className="px-2 py-0.5 rounded bg-indigo-600 text-white font-mono">
               {selectedInvoiceIds.length}
@@ -271,9 +438,21 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleBatchDownloadPdf}
+              onClick={() => {
+                const selected = invoices.filter((i) => selectedInvoiceIds.includes(i.id));
+                handleExportCsv(selected);
+              }}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs font-medium rounded-lg flex items-center gap-1.5 border border-slate-700 transition-colors shadow-sm"
+              title="Export selected invoices to RFC 4180 CSV spreadsheet"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Export Selected (CSV)</span>
+            </button>
+
+            <button
+              onClick={() => handleBatchDownloadPdf()}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg flex items-center gap-1.5 border border-slate-700 transition-colors shadow-sm"
-              title="Download all selected invoices into a single merged PDF file"
+              title="Download selected invoices as merged A4 PDF document"
             >
               <Download className="w-3.5 h-3.5 text-indigo-400" />
               <span>Download Merged PDF</span>
@@ -293,7 +472,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-colors"
             >
               <Tag className="w-3.5 h-3.5" />
-              <span>Apply Bulk Tag</span>
+              <span>Apply Tag</span>
             </button>
 
             <button
@@ -379,8 +558,229 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <>
+            {/* Smartphone Touch-Optimized Feed (Displays on screens < 640px) */}
+            <div className="block sm:hidden divide-y divide-slate-800/80 font-sans">
+              {/* Mobile Quick Select All Header */}
+              <div className="px-3 py-2 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <button
+                  onClick={handleSelectAll}
+                  className="flex items-center gap-2 py-1 px-1.5 rounded hover:bg-slate-800 transition-colors min-h-[36px]"
+                >
+                  {selectedInvoiceIds.length === filteredInvoices.length && filteredInvoices.length > 0 ? (
+                    <CheckSquare className="w-4 h-4 text-indigo-400 shrink-0" />
+                  ) : (
+                    <Square className="w-4 h-4 shrink-0" />
+                  )}
+                  <span className="font-medium text-slate-300">
+                    {selectedInvoiceIds.length > 0 ? `Selected (${selectedInvoiceIds.length})` : 'Select All Invoices'}
+                  </span>
+                </button>
+                <span className="text-[11px] font-mono text-slate-500">
+                  {filteredInvoices.length} total
+                </span>
+              </div>
+
+              {filteredInvoices.map((inv) => {
+                const isSelected = selectedInvoiceIds.includes(inv.id);
+                const isUnpaid = inv.status === 'sent' || inv.status === 'overdue';
+
+                return (
+                  <div
+                    key={`mobile-${inv.id}`}
+                    className={`p-3.5 space-y-3 transition-colors ${
+                      isSelected ? 'bg-indigo-950/25 border-l-2 border-indigo-500' : 'bg-slate-900/30'
+                    }`}
+                  >
+                    {/* Header Row: Checkbox, Invoice #, Status Pill */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          onClick={() => handleToggleSelect(inv.id)}
+                          className="min-w-[40px] min-h-[40px] flex items-center justify-center -ml-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60"
+                          title="Select invoice"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-indigo-400" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                        <div>
+                          <button
+                            onClick={() => onViewInvoice(inv)}
+                            className="font-mono text-sm font-bold text-white hover:text-indigo-400 transition-colors text-left"
+                          >
+                            {inv.invoiceNumber}
+                          </button>
+                          <div className="text-[11px] text-slate-400 truncate max-w-[180px]">
+                            {inv.clientName}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status badge */}
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          inv.status === 'paid'
+                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                            : inv.status === 'overdue'
+                            ? 'bg-rose-950 text-rose-400 border border-rose-800'
+                            : inv.status === 'sent'
+                            ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                            : inv.status === 'draft'
+                            ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        }`}
+                      >
+                        {inv.status}
+                      </span>
+                    </div>
+
+                    {/* Middle Row: Due Date & Amount */}
+                    <div className="flex items-end justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/80">
+                      <div>
+                        <div className="text-[10px] text-slate-500 uppercase font-semibold">Due Date</div>
+                        <div className="text-xs font-mono text-slate-300 mt-0.5">{inv.dueDate}</div>
+                        {inv.paidAt && (
+                          <div className="text-[10px] font-mono text-emerald-400 mt-0.5">
+                            Settled {new Date(inv.paidAt).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-slate-500 uppercase font-semibold">Total Amount</div>
+                        <div className="text-base font-black font-mono text-white">
+                          {inv.currency}{' '}
+                          {inv.totalAmount.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tags row if any */}
+                    {inv.tags && inv.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {inv.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Smartphone Touch Action Hitboxes (>= 44px min-height for touch ease) */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        onClick={() => onViewInvoice(inv)}
+                        className="min-h-[44px] px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] transition-all"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>View Invoice</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleExportSingleInvoicePdf(inv)}
+                        className="min-h-[44px] px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 active:scale-[0.98] transition-all"
+                      >
+                        <Download className="w-4 h-4 text-indigo-400" />
+                        <span>Export PDF</span>
+                      </button>
+
+                      {isUnpaid && (
+                        <button
+                          onClick={() => onOpenPayModal(inv)}
+                          className="col-span-2 min-h-[44px] px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98] transition-all"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>Pay Online ({inv.currency} {inv.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })})</span>
+                        </button>
+                      )}
+
+                      {inv.status === 'paid' && (
+                        <button
+                          onClick={() => setReceiptModalInvoice(inv)}
+                          className="col-span-2 min-h-[44px] px-3 py-2 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-700/80 text-emerald-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
+                        >
+                          <Receipt className="w-4 h-4 text-emerald-400" />
+                          <span>Generate Receipt</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Secondary Utility Actions (Copy Link, Reminder, Edit, Delete) */}
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleCopyLink(inv)}
+                          className="min-h-[38px] px-2 py-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 flex items-center gap-1 text-[11px]"
+                          title="Copy Link"
+                        >
+                          {copiedId === inv.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                          <span>{copiedId === inv.id ? 'Copied' : 'Share Link'}</span>
+                        </button>
+
+                        {isUnpaid && (
+                          <button
+                            onClick={() => handleSendPaymentReminder(inv)}
+                            className="min-h-[38px] px-2 py-1 text-amber-400 hover:text-amber-300 rounded-md hover:bg-slate-800 flex items-center gap-1 text-[11px]"
+                            title="Send Reminder"
+                          >
+                            <BellRing className="w-3.5 h-3.5" />
+                            <span>Remind</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {canEdit && inv.status !== 'paid' && (
+                          <button
+                            onClick={() => onEditInvoice(inv)}
+                            className="min-w-[38px] min-h-[38px] flex items-center justify-center text-slate-400 hover:text-white rounded-md hover:bg-slate-800"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {inv.status !== 'paid' && canEdit && (
+                          <button
+                            onClick={() => handleMarkPaid(inv)}
+                            className="min-w-[38px] min-h-[38px] flex items-center justify-center text-emerald-400 hover:text-emerald-300 rounded-md hover:bg-slate-800"
+                            title="Mark Paid"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {canEdit && (
+                          <button
+                            onClick={() => handleDelete(inv)}
+                            className="min-w-[38px] min-h-[38px] flex items-center justify-center text-slate-500 hover:text-rose-400 rounded-md hover:bg-slate-800"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop High-Density Table (Displays on screens >= 640px) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
               <thead className="bg-slate-950 text-slate-400 font-medium border-b border-slate-800 select-none">
                 <tr>
                   <th className="py-3 px-3 w-8">
@@ -500,6 +900,15 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                             <Eye className="w-3.5 h-3.5" />
                           </button>
 
+                          {/* Direct A4 PDF Export */}
+                          <button
+                            onClick={() => handleExportSingleInvoicePdf(inv)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-400 rounded hover:bg-slate-800 transition-colors"
+                            title="Export A4 PDF Invoice (ISO 216 with QR)"
+                          >
+                            <FileDown className="w-3.5 h-3.5" />
+                          </button>
+
                           {/* Simulate Client Visa Payment */}
                           {inv.status !== 'paid' && (
                             <button
@@ -511,14 +920,15 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                             </button>
                           )}
 
-                          {/* Clean A4 Official Payment Receipt */}
+                          {/* Clearly Labeled Generate Receipt Button */}
                           {inv.status === 'paid' && (
                             <button
                               onClick={() => setReceiptModalInvoice(inv)}
-                              className="p-1.5 text-emerald-400 hover:text-emerald-300 rounded hover:bg-slate-800 transition-colors"
-                              title="Generate Clean A4 Official Payment Receipt"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 rounded-lg transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+                              title="Generate Receipt"
                             >
-                              <Receipt className="w-3.5 h-3.5" />
+                              <Receipt className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>Generate Receipt</span>
                             </button>
                           )}
 
@@ -614,6 +1024,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               </tbody>
             </table>
           </div>
+        </>
         )}
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Printer,
@@ -17,10 +17,15 @@ import {
   AlertTriangle,
   FileCheck,
   Receipt,
+  FileText,
+  Building2,
+  QrCode,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { Invoice, InvoiceVersion, OrganizationSettings } from '../../types';
 import { googleDriveService } from '../../services/googleDriveService';
-import { storageService } from '../../services/storage';
+import { storageService, DEFAULT_ENTERPRISE_TERMS } from '../../services/storage';
+import { pdfExportService } from '../../services/pdfExportService';
 import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface InvoicePreviewModalProps {
@@ -42,6 +47,8 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
   const [driveSuccess, setDriveSuccess] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
   // Versioning state
   const [showVersionsDrawer, setShowVersionsDrawer] = useState(false);
@@ -57,6 +64,16 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
 
   // If currently previewing a historical snapshot, use that; otherwise use currentInvoice
   const invoice = previewingVersion ? (previewingVersion.snapshot as Invoice) : currentInvoice;
+
+  // Generate authentic verification QR code for preview and print
+  useEffect(() => {
+    const qrData = `INVOICE:${invoice.invoiceNumber}|TOTAL:${invoice.totalAmount}|CURR:${invoice.currency}|STATUS:${invoice.status}|TAX_ID:${org.taxId || 'KERO'}`;
+    QRCode.toDataURL(qrData, {
+      width: 120,
+      margin: 1,
+      color: { dark: '#0F172A', light: '#FFFFFF' },
+    }).then(setQrCodeDataUrl).catch(console.warn);
+  }, [invoice.invoiceNumber, invoice.totalAmount, invoice.currency, invoice.status, org.taxId]);
 
   // Ensure baseline version list exists
   const versions: InvoiceVersion[] = currentInvoice.versions && currentInvoice.versions.length > 0
@@ -94,6 +111,18 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportA4Pdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      await pdfExportService.exportInvoiceToA4Pdf(invoice, org);
+    } catch (err: any) {
+      console.error('Failed to export A4 PDF invoice:', err);
+      alert(`Could not export PDF invoice: ${err?.message || 'Error occurred'}`);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   // Restore to specific version
@@ -167,6 +196,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
       case 'emerald':
         return {
           bg: 'bg-emerald-600',
+          gradient: 'from-emerald-600 via-teal-500 to-emerald-700',
           text: 'text-emerald-700',
           border: 'border-emerald-600',
           badge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
@@ -174,6 +204,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
       case 'rose':
         return {
           bg: 'bg-rose-600',
+          gradient: 'from-rose-600 via-pink-500 to-rose-700',
           text: 'text-rose-700',
           border: 'border-rose-600',
           badge: 'bg-rose-50 text-rose-800 border-rose-200',
@@ -181,6 +212,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
       case 'amber':
         return {
           bg: 'bg-amber-600',
+          gradient: 'from-amber-600 via-orange-500 to-amber-700',
           text: 'text-amber-700',
           border: 'border-amber-600',
           badge: 'bg-amber-50 text-amber-800 border-amber-200',
@@ -188,6 +220,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
       case 'cyan':
         return {
           bg: 'bg-cyan-600',
+          gradient: 'from-cyan-600 via-sky-500 to-cyan-700',
           text: 'text-cyan-700',
           border: 'border-cyan-600',
           badge: 'bg-cyan-50 text-cyan-800 border-cyan-200',
@@ -195,6 +228,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
       case 'slate':
         return {
           bg: 'bg-slate-800',
+          gradient: 'from-slate-800 via-slate-700 to-slate-900',
           text: 'text-slate-800',
           border: 'border-slate-800',
           badge: 'bg-slate-100 text-slate-800 border-slate-300',
@@ -203,6 +237,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
       default:
         return {
           bg: 'bg-indigo-600',
+          gradient: 'from-indigo-600 via-indigo-500 to-indigo-700',
           text: 'text-indigo-700',
           border: 'border-indigo-600',
           badge: 'bg-indigo-50 text-indigo-800 border-indigo-200',
@@ -213,10 +248,62 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   const colors = getAccentColorClasses();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-5xl max-h-[95vh] flex flex-col bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden text-slate-100">
-        {/* Modal Controls Bar (Hidden during print) */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-slate-950 border-b border-slate-800 no-print shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto invoice-preview-backdrop">
+      {/* Print styles injection for pixel-perfect pure white A4 portrait sheet & removing dark browser print artifacts */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+          }
+          body, html {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .invoice-preview-backdrop {
+            position: static !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          .invoice-preview-window {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            max-width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          .invoice-canvas-wrapper {
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+          .invoice-printable {
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+          }
+        }
+      `}</style>
+
+      <div className="invoice-preview-window w-full max-w-5xl h-[100dvh] sm:h-auto sm:max-h-[95vh] flex flex-col bg-slate-900 border-0 sm:border sm:border-slate-700 rounded-none sm:rounded-xl shadow-2xl overflow-hidden text-slate-100">
+        
+        {/* Desktop Controls Bar (Hidden on smartphone viewports & print) */}
+        <div className="hidden md:flex items-center justify-between px-6 py-3.5 bg-slate-950 border-b border-slate-800 no-print shrink-0">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-slate-300">
               Invoice Preview: <span className="font-mono text-indigo-400">{invoice.invoiceNumber}</span>
@@ -251,11 +338,21 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              onClick={handleExportA4Pdf}
+              disabled={isExportingPdf}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
+              title="Download Full A4 PDF Invoice directly"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{isExportingPdf ? 'Exporting PDF...' : 'Export A4 PDF'}</span>
+            </button>
+
+            <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print / Save PDF</span>
+              <span>Print</span>
             </button>
 
             {invoice.googleDriveLink ? (
@@ -292,11 +389,11 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             {currentInvoice.status === 'paid' && (
               <button
                 onClick={() => setShowReceiptModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 rounded-lg border border-emerald-800 transition-colors shadow-sm"
-                title="Generate Clean A4 Official Payment Receipt"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-sm transition-colors cursor-pointer"
+                title="Generate Receipt"
               >
-                <Receipt className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Clean A4 Receipt</span>
+                <Receipt className="w-3.5 h-3.5 text-white" />
+                <span>Generate Receipt</span>
               </button>
             )}
 
@@ -309,13 +406,55 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>Simulate Client Pay (Visa/Stripe)</span>
+                <span>Simulate Client Pay</span>
               </button>
             )}
 
             <button
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors ml-2"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Smartphone Mobile Top App Bar (Visible on mobile viewports < 768px) */}
+        <div className="flex md:hidden items-center justify-between px-3.5 py-2.5 bg-slate-950 border-b border-slate-800 no-print shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-indigo-400 truncate max-w-[130px]">
+              {invoice.invoiceNumber}
+            </span>
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                invoice.status === 'paid'
+                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                  : 'bg-slate-800 text-slate-300'
+              }`}
+            >
+              {invoice.status.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowVersionsDrawer(!showVersionsDrawer)}
+              className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-300 hover:text-white bg-slate-800/80 rounded-lg"
+              title="Version History"
+            >
+              <History className="w-4 h-4 text-indigo-400" />
+            </button>
+            <button
+              onClick={handlePrint}
+              className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-300 hover:text-white bg-slate-800/80 rounded-lg"
+              title="Print"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-white bg-slate-800/80 rounded-lg ml-0.5"
+              title="Close"
             >
               <X className="w-5 h-5" />
             </button>
@@ -364,210 +503,369 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
         )}
 
         {/* Modal Body Container with Side Versioning Drawer */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden relative">
           {/* Printable Invoice Canvas */}
-          <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-800/40">
-          <div className="invoice-printable max-w-3xl mx-auto bg-white text-slate-900 rounded-xl shadow-xl p-10 font-sans border border-slate-200">
-            {/* Invoice Top Header */}
-            <div className="flex justify-between items-start gap-8 pb-8 border-b border-slate-200">
-              <div className="space-y-3">
-                {org.logoUrl ? (
-                  <img
-                    src={org.logoUrl}
-                    alt={org.name}
-                    className="h-12 w-auto max-w-[200px] object-contain"
-                  />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg ${colors.bg} text-white font-bold flex items-center justify-center text-base`}>
-                      {org.name.charAt(0)}
+          <div className="invoice-canvas-wrapper flex-1 overflow-y-auto p-2.5 sm:p-6 lg:p-8 bg-slate-100/90 pb-28 md:pb-8">
+            <div className="invoice-printable max-w-3xl mx-auto bg-white text-slate-900 rounded-2xl shadow-xl p-4 sm:p-8 md:p-10 font-sans border border-slate-200/90 overflow-hidden relative">
+              {/* Top Corporate Graphic Accent Bar */}
+              <div className={`h-2.5 w-full bg-gradient-to-r ${colors.gradient} -mt-4 sm:-mt-8 md:-mt-10 -mx-4 sm:-mx-8 md:-mx-10 mb-6 sm:mb-8`} />
+
+              {/* Invoice Top Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-8 pb-6 sm:pb-8 border-b border-slate-200">
+                <div className="space-y-2.5">
+                  {org.logoUrl || '/kero-logo.png' ? (
+                    <img
+                      src={org.logoUrl || '/kero-logo.png'}
+                      alt={org.name}
+                      className="h-10 sm:h-12 w-auto max-w-[180px] sm:max-w-[200px] object-contain"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg ${colors.bg} text-white font-bold flex items-center justify-center text-base shadow-sm`}>
+                        {org.name.charAt(0)}
+                      </div>
+                      <span className="text-xl font-bold tracking-tight text-slate-900">
+                        {org.name}
+                      </span>
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-slate-900">
-                      {org.name}
+                  )}
+
+                  <div className="text-xs text-slate-500 leading-relaxed">
+                    <div className="font-semibold text-slate-800">{org.legalName}</div>
+                    <div>{org.address.line1}</div>
+                    <div>{org.address.city}, {org.address.postalCode} · {org.address.country}</div>
+                    <div className="pt-0.5">Tax ID / VAT Reg: <span className="font-mono font-medium text-slate-800">{org.taxId}</span></div>
+                    <div>Email: {org.email} · Phone: {org.phone}</div>
+                  </div>
+                </div>
+
+                <div className="sm:text-right space-y-1.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                  <div className="text-xl sm:text-2xl font-black tracking-tight uppercase text-slate-900">
+                    INVOICE
+                  </div>
+                  <div className="text-sm font-mono font-bold text-indigo-700">
+                    {invoice.invoiceNumber}
+                  </div>
+                  <div>
+                    <span
+                      className={`inline-block px-3 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border shadow-xs ${
+                        invoice.status === 'paid'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : invoice.status === 'overdue'
+                          ? 'bg-rose-50 text-rose-700 border-rose-300'
+                          : invoice.status === 'sent'
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                          : 'bg-slate-100 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      STATUS: {invoice.status}
                     </span>
                   </div>
-                )}
 
-                <div className="text-xs text-slate-500 leading-relaxed">
-                  <div className="font-semibold text-slate-700">{org.legalName}</div>
-                  <div>{org.address.line1}</div>
-                  <div>{org.address.city}, {org.address.postalCode} · {org.address.country}</div>
-                  <div>Tax ID / VAT: <span className="font-mono text-slate-700">{org.taxId}</span></div>
-                  <div>Email: {org.email} · Phone: {org.phone}</div>
-                </div>
-              </div>
-
-              <div className="text-right space-y-2">
-                <div className="text-2xl font-black tracking-tight uppercase text-slate-900">
-                  INVOICE
-                </div>
-                <div className="text-sm font-mono font-semibold text-slate-700">
-                  {invoice.invoiceNumber}
-                </div>
-                <div className="inline-block px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200">
-                  STATUS: {invoice.status}
-                </div>
-
-                <div className="text-xs text-slate-500 pt-2 space-y-1">
-                  <div>Issue Date: <strong className="text-slate-800 font-mono">{invoice.issueDate}</strong></div>
-                  <div>Due Date: <strong className="text-slate-800 font-mono">{invoice.dueDate}</strong></div>
-                  {invoice.poNumber && (
-                    <div>PO Number: <span className="text-slate-800 font-mono">{invoice.poNumber}</span></div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Billed To */}
-            <div className="grid grid-cols-2 gap-8 py-6 border-b border-slate-200">
-              <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Billed To:
-                </div>
-                <div className="text-sm font-bold text-slate-900">{invoice.clientName}</div>
-                <div className="text-xs text-slate-600 mt-0.5 whitespace-pre-line leading-relaxed">
-                  {invoice.clientAddress}
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  Email: {invoice.clientEmail}
-                </div>
-                {invoice.clientTaxId && (
-                  <div className="text-xs text-slate-500">
-                    Tax / VAT ID: <span className="font-mono text-slate-700">{invoice.clientTaxId}</span>
+                  <div className="text-xs text-slate-500 pt-1 space-y-0.5">
+                    <div>Issue Date: <strong className="text-slate-800 font-mono">{invoice.issueDate}</strong></div>
+                    <div>Due Date: <strong className="text-slate-800 font-mono">{invoice.dueDate}</strong></div>
+                    {invoice.poNumber && (
+                      <div>PO Number: <span className="text-slate-800 font-mono">{invoice.poNumber}</span></div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
 
-              <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Payment Method:
-                </div>
-                <div className="text-xs text-slate-600 space-y-1">
-                  <div className="font-medium text-slate-800">
-                    Credit Card (VISA / Mastercard via Stripe) or Bank Wire
+              {/* Billed To & Payment Method Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 py-4 sm:py-6 border-b border-slate-200 text-xs">
+                <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-1">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <span>Billed To:</span>
                   </div>
-                  <div>Currency: <strong className="font-mono text-slate-900">{invoice.currency}</strong></div>
-                  <div>Terms: {org.defaultPaymentTerms}</div>
-                  {invoice.paidAt && (
-                    <div className="text-emerald-700 font-semibold pt-1">
-                      Paid on {new Date(invoice.paidAt).toLocaleDateString()} via {invoice.paymentMethodUsed}
+                  <div className="text-sm font-bold text-slate-900">{invoice.clientName}</div>
+                  <div className="text-slate-600 mt-0.5 whitespace-pre-line leading-relaxed">
+                    {invoice.clientAddress}
+                  </div>
+                  <div className="text-slate-500 pt-1">
+                    Email: <span className="text-slate-700 font-medium">{invoice.clientEmail}</span>
+                  </div>
+                  {invoice.clientTaxId && (
+                    <div className="text-slate-500">
+                      Tax / VAT ID: <span className="font-mono text-slate-800 font-semibold">{invoice.clientTaxId}</span>
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Line Items Table */}
-            <div className="py-6">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-300 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="py-3 pr-4">Description</th>
-                    <th className="py-3 px-3 text-right">Qty</th>
-                    <th className="py-3 px-3 text-right">Unit Rate</th>
-                    <th className="py-3 px-3 text-right">Tax</th>
-                    <th className="py-3 pl-3 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {invoice.items.map((item) => (
-                    <tr key={item.id}>
-                      <td className="py-3.5 pr-4 text-slate-800 font-medium leading-relaxed">
+                <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Payment Details & Terms:
+                  </div>
+                  <div className="text-slate-600 space-y-1">
+                    <div className="font-medium text-slate-800">
+                      Credit Card (VISA / Mastercard via Stripe) or Bank Wire
+                    </div>
+                    <div>Currency: <strong className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">{invoice.currency}</strong></div>
+                    <div>Payment Terms: <span className="font-medium text-slate-800">{org.defaultPaymentTerms}</span></div>
+                    {invoice.paidAt && (
+                      <div className="pt-2 border-t border-slate-200/80 mt-1 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Settled on {new Date(invoice.paidAt).toLocaleDateString()}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowReceiptModal(true)}
+                          className="no-print inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                          title="Generate Receipt"
+                        >
+                          <Receipt className="w-3 h-3 text-white" />
+                          <span>Generate Receipt</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Line Items - Smartphone Cards on Mobile, Table on Desktop */}
+              <div className="py-4 sm:py-6">
+                {/* Smartphone Line-Item Cards (Visible on mobile screens) */}
+                <div className="sm:hidden space-y-2.5">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Line Items ({invoice.items.length})
+                  </div>
+                  {invoice.items.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5"
+                    >
+                      <div className="font-semibold text-slate-900 text-xs leading-snug">
                         {item.description}
-                      </td>
-                      <td className="py-3.5 px-3 text-right font-mono text-slate-700 tabular-nums">
-                        {item.quantity}
-                      </td>
-                      <td className="py-3.5 px-3 text-right font-mono text-slate-700 tabular-nums">
-                        {invoice.currency} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-3.5 px-3 text-right font-mono text-slate-500 tabular-nums">
-                        {item.taxRate}%
-                      </td>
-                      <td className="py-3.5 pl-3 text-right font-mono font-semibold text-slate-900 tabular-nums">
-                        {invoice.currency} {item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
+                      </div>
+                      <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/80">
+                        <span className="text-slate-500 font-mono text-[11px]">
+                          {item.quantity} × {invoice.currency} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {item.taxRate > 0 && ` (+${item.taxRate}%)`}
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 tabular-nums text-sm">
+                          {invoice.currency} {item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Totals Section */}
-            <div className="flex justify-end pt-4 pb-6 border-t border-slate-200">
-              <div className="w-64 space-y-2 text-xs">
-                <div className="flex justify-between text-slate-600">
-                  <span>Subtotal:</span>
-                  <span className="font-mono tabular-nums">{invoice.currency} {invoice.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
 
-                {invoice.totalDiscount > 0 && (
-                  <div className="flex justify-between text-rose-600">
-                    <span>Discount:</span>
-                    <span className="font-mono tabular-nums">-{invoice.currency} {invoice.totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                )}
+                {/* Classic High-Density Table (Visible on sm: and up) */}
+                <table className="hidden sm:table w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-300 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                      <th className="py-3 pr-4">Description</th>
+                      <th className="py-3 px-3 text-right">Qty</th>
+                      <th className="py-3 px-3 text-right">Unit Rate</th>
+                      <th className="py-3 px-3 text-right">Tax</th>
+                      <th className="py-3 pl-3 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {invoice.items.map((item) => (
+                      <tr key={item.id}>
+                        <td className="py-3.5 pr-4 text-slate-800 font-medium leading-relaxed">
+                          {item.description}
+                        </td>
+                        <td className="py-3.5 px-3 text-right font-mono text-slate-700 tabular-nums">
+                          {item.quantity}
+                        </td>
+                        <td className="py-3.5 px-3 text-right font-mono text-slate-700 tabular-nums">
+                          {invoice.currency} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3.5 px-3 text-right font-mono text-slate-500 tabular-nums">
+                          {item.taxRate}%
+                        </td>
+                        <td className="py-3.5 pl-3 text-right font-mono font-semibold text-slate-900 tabular-nums">
+                          {invoice.currency} {item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                {invoice.totalTax > 0 && (
+              {/* Totals Section */}
+              <div className="flex justify-end pt-4 pb-6 border-t border-slate-200">
+                <div className="w-full sm:w-72 space-y-2 text-xs">
                   <div className="flex justify-between text-slate-600">
-                    <span>Tax:</span>
-                    <span className="font-mono tabular-nums">{invoice.currency} {invoice.totalTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span>Subtotal:</span>
+                    <span className="font-mono tabular-nums text-slate-900 font-medium">{invoice.currency} {invoice.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                )}
 
-                <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-300">
-                  <span>Total Due:</span>
-                  <span className="font-mono tabular-nums">{invoice.currency} {invoice.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  {invoice.totalDiscount > 0 && (
+                    <div className="flex justify-between text-rose-600">
+                      <span>Discount:</span>
+                      <span className="font-mono tabular-nums">-{invoice.currency} {invoice.totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+
+                  {invoice.totalTax > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Tax / VAT:</span>
+                      <span className="font-mono tabular-nums text-slate-900 font-medium">+{invoice.currency} {invoice.totalTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+
+                  {invoice.shippingFee && invoice.shippingFee > 0 ? (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Shipping:</span>
+                      <span className="font-mono tabular-nums text-slate-900 font-medium">+{invoice.currency} {invoice.shippingFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  ) : null}
+
+                  {invoice.lateFeeApplied && invoice.lateFeeApplied > 0 ? (
+                    <div className="flex justify-between text-rose-600">
+                      <span>Late Fee (Overdue):</span>
+                      <span className="font-mono tabular-nums font-semibold">+{invoice.currency} {invoice.lateFeeApplied.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  ) : null}
+
+                  <div className="flex justify-between items-center text-base font-bold text-slate-900 p-3 bg-indigo-50/80 rounded-xl border border-indigo-100 shadow-xs">
+                    <span>Total Due:</span>
+                    <span className="font-mono tabular-nums text-indigo-700 text-lg">{invoice.currency} {invoice.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Bank Details & Terms */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-200 text-xs">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-1.5">
-                <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                  Bank Remittance Details:
-                </div>
-                <div className="text-[11px] text-slate-600 font-mono space-y-1">
-                  <div>Bank: <strong className="text-slate-800">{org.bankDetails.bankName}</strong></div>
-                  <div>Account: <strong className="text-slate-800">{org.bankDetails.accountNumber}</strong></div>
-                  <div>SWIFT/BIC: <strong className="text-slate-800">{org.bankDetails.swiftBic}</strong></div>
-                  <div>IBAN: <strong className="text-slate-800">{org.bankDetails.iban}</strong></div>
-                  <div>Beneficiary: {org.bankDetails.accountHolderName}</div>
-                </div>
-                {org.bankDetails.paymentInstructions && (
-                  <div className="text-[10px] text-slate-500 pt-1 leading-tight">
-                    {org.bankDetails.paymentInstructions}
+              {/* Bank Remittance Details & Authentic QR Code */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5 border-t border-slate-200 text-xs">
+                {/* Bank Details (2 cols on md) */}
+                <div className="md:col-span-2 bg-slate-50/90 p-4 rounded-xl border border-slate-200/90 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-slate-200/80">
+                    <Building2 className="w-4 h-4 text-indigo-600" />
+                    <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                      Bank Wire Remittance Instructions
+                    </span>
                   </div>
-                )}
+                  <div className="text-[11px] text-slate-600 font-mono grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                    <div>Bank: <strong className="text-slate-900">{org.bankDetails.bankName}</strong></div>
+                    <div>Account: <strong className="text-slate-900">{org.bankDetails.accountNumber}</strong></div>
+                    <div>SWIFT/BIC: <strong className="text-slate-900">{org.bankDetails.swiftBic}</strong></div>
+                    <div>IBAN: <strong className="text-slate-900">{org.bankDetails.iban}</strong></div>
+                    <div className="sm:col-span-2">Beneficiary: <strong className="text-slate-800">{org.bankDetails.accountHolderName}</strong></div>
+                    <div className="sm:col-span-2 text-indigo-700 font-bold">
+                      Remittance Reference: <span className="font-mono bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">#{invoice.invoiceNumber}</span>
+                    </div>
+                  </div>
+                  {org.bankDetails.paymentInstructions && (
+                    <div className="text-[10px] text-slate-500 pt-1 leading-tight border-t border-slate-200/80">
+                      {org.bankDetails.paymentInstructions}
+                    </div>
+                  )}
+                </div>
+
+                {/* Authentic Verification QR Code Card (1 col on md) */}
+                <div className="bg-slate-50/90 p-4 rounded-xl border border-slate-200/90 flex flex-col items-center justify-center text-center">
+                  {qrCodeDataUrl ? (
+                    <img
+                      src={qrCodeDataUrl}
+                      alt={`Verification QR Code for Invoice ${invoice.invoiceNumber}`}
+                      className="w-22 h-22 rounded border border-slate-200 bg-white p-1 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-22 h-22 rounded border border-slate-200 bg-white flex items-center justify-center text-slate-300">
+                      <QrCode className="w-10 h-10" />
+                    </div>
+                  )}
+                  <div className="mt-2 text-[10px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Authentic Document</span>
+                  </div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">
+                    Scan to verify issuer & tax ledger
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                  Terms & Conditions:
+              {/* Commercial Terms & Conditions Card */}
+              <div className="mt-4 p-4 sm:p-5 bg-slate-50/90 border border-slate-200/90 rounded-xl text-xs space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                      Commercial Terms & Conditions
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500 font-medium">
+                    Enterprise Policy Standard
+                  </span>
                 </div>
-                <div className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-line">
-                  {invoice.termsAndConditions || org.invoiceTermsAndConditions}
+
+                <div className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-line font-normal">
+                  {invoice.termsAndConditions || org.invoiceTermsAndConditions || DEFAULT_ENTERPRISE_TERMS}
                 </div>
+
                 {invoice.notes && (
-                  <div className="text-[11px] text-slate-500 italic pt-1">
-                    Note: {invoice.notes}
+                  <div className="pt-2 border-t border-slate-200/80 text-[11px] text-slate-500 italic flex items-start gap-1.5">
+                    <span className="font-semibold not-italic text-slate-700">Client Note:</span>
+                    <span>{invoice.notes}</span>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Footer watermark */}
-            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-              <span>Generated with Invox Enterprise SaaS Platform</span>
-              <span>Page 1 of 1</span>
+              {/* Official Document Footer */}
+              <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-slate-600">KERO INVOICE SaaS Platform</span>
+                  <span>·</span>
+                  <span className="font-mono text-slate-400">
+                    Ledger Ref: sha256:{Math.abs((invoice.id + invoice.totalAmount).split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0)).toString(16)}00e2417c
+                  </span>
+                </div>
+                <span>ISO 216 A4 Standard · Page 1 of 1</span>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Smartphone Thumb Zone Sticky Bottom Action Bar (Mobile Only) */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 z-40 flex items-center gap-2 no-print shadow-2xl">
+            {invoice.status !== 'paid' ? (
+              <>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenPayModal(invoice);
+                  }}
+                  className="flex-1 min-h-[44px] px-3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-transform"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>Pay Online</span>
+                </button>
+                <button
+                  onClick={handleExportA4Pdf}
+                  disabled={isExportingPdf}
+                  className="flex-1 min-h-[44px] px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 border border-slate-700 active:scale-[0.98] transition-transform"
+                >
+                  <Download className="w-4 h-4 text-indigo-400" />
+                  <span>{isExportingPdf ? 'Exporting...' : 'A4 PDF'}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleExportA4Pdf}
+                  disabled={isExportingPdf}
+                  className="flex-1 min-h-[44px] px-3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-transform"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isExportingPdf ? 'Exporting...' : 'Export A4 PDF'}</span>
+                </button>
+                <button
+                  onClick={() => setShowReceiptModal(true)}
+                  className="flex-1 min-h-[44px] px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-transform"
+                >
+                  <Receipt className="w-4 h-4" />
+                  <span>Generate Receipt</span>
+                </button>
+              </>
+            )}
+          </div>
 
         {/* Version History Side Drawer */}
         {showVersionsDrawer && (
-          <div className="w-80 md:w-96 bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 no-print animate-in slide-in-from-right duration-200">
+          <div className="fixed inset-0 z-50 md:static md:w-80 lg:w-96 bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 no-print animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
               <div>

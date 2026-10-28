@@ -17,6 +17,8 @@ import {
 import { Invoice, OrganizationSettings, User } from '../../types';
 import { emailService } from '../../services/emailService';
 
+import { pdfExportService } from '../../services/pdfExportService';
+
 interface PaymentReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,6 +37,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [showStamp, setShowStamp] = useState(true);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   if (!isOpen) return null;
 
@@ -67,6 +70,20 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
     window.print();
   };
 
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      await pdfExportService.exportReceiptToA4Pdf(invoice, org);
+      setEmailStatus(`Official A4 PDF receipt downloaded: Receipt_${receiptNumber}.pdf`);
+      setTimeout(() => setEmailStatus(null), 4000);
+    } catch (err: any) {
+      console.error('Failed to export A4 PDF receipt:', err);
+      alert(`Could not export PDF receipt: ${err?.message || 'Error occurred'}`);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handleCopyReceiptNumber = () => {
     navigator.clipboard.writeText(receiptNumber);
     setIsCopied(true);
@@ -88,7 +105,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
   const verificationHash = `sha256:7f8b9a1c${invoice.id.slice(-4)}${invoice.totalAmount}00e2417c`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
       {/* Print styles injection for pixel-perfect A4 portrait sheet */}
       <style>{`
         @media print {
@@ -121,9 +138,61 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
         }
       `}</style>
 
-      <div className="w-full max-w-4xl max-h-[96vh] flex flex-col bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden text-slate-100">
-        {/* Modal Controls Toolbar (Hidden on print) */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-slate-950 border-b border-slate-800 no-print shrink-0">
+      <div className="w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[96vh] rounded-none sm:rounded-xl flex flex-col bg-slate-900 border-0 sm:border sm:border-slate-700 shadow-2xl overflow-hidden text-slate-100 relative">
+        {/* Dedicated Smartphone App Bar (< md screens) */}
+        <div className="flex md:hidden items-center justify-between px-3.5 py-2.5 bg-slate-950 border-b border-slate-800 no-print shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+              <Receipt className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-white font-mono truncate max-w-[130px]">
+                  {receiptNumber}
+                </span>
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  PAID
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono">
+                {paymentDate}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowStamp(!showStamp)}
+              className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border transition-colors ${
+                showStamp
+                  ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                  : 'bg-slate-800 border-slate-700 text-slate-400'
+              }`}
+              title="Toggle verification seal"
+            >
+              <FileCheck className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center text-slate-300 bg-slate-800 rounded-lg border border-slate-700"
+              title="Print Receipt"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={onClose}
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop Controls Toolbar (Hidden on mobile and print) */}
+        <div className="hidden md:flex items-center justify-between px-6 py-3.5 bg-slate-950 border-b border-slate-800 no-print shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
               <Receipt className="w-4 h-4" />
@@ -131,7 +200,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Official A4 Payment Receipt
+                  Receipt
                 </span>
                 <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   PAID IN FULL
@@ -151,7 +220,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                   ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
                   : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
               }`}
-              title="Toggle official verification seal"
+              title="Toggle verification seal"
             >
               <FileCheck className="w-3.5 h-3.5" />
               <span>{showStamp ? 'Seal Active' : 'Show Seal'}</span>
@@ -167,17 +236,27 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
             </button>
 
             <button
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
+              title="Download A4 PDF Receipt directly"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{isExportingPdf ? 'Exporting PDF...' : 'Download Receipt (PDF)'}</span>
+            </button>
+
+            <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors"
-              title="Print or save as high-resolution A4 PDF"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors cursor-pointer"
+              title="Open Browser Print Dialog"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print A4 PDF</span>
+              <span>Print</span>
             </button>
 
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors ml-2"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors ml-2 cursor-pointer"
               title="Close"
             >
               <X className="w-5 h-5" />
@@ -187,10 +266,10 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
 
         {/* Email Toast confirmation */}
         {emailStatus && (
-          <div className="bg-emerald-950/90 border-b border-emerald-800 px-6 py-2 flex items-center justify-between text-xs text-emerald-300 no-print">
+          <div className="bg-emerald-950/90 border-b border-emerald-800 px-4 sm:px-6 py-2 flex items-center justify-between text-xs text-emerald-300 no-print">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>{emailStatus}</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="truncate">{emailStatus}</span>
             </div>
             <button onClick={() => setEmailStatus(null)} className="text-emerald-400 hover:text-white">
               <X className="w-3.5 h-3.5" />
@@ -199,17 +278,17 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
         )}
 
         {/* A4 Paper Canvas Container */}
-        <div className="a4-print-container flex-1 overflow-y-auto p-6 lg:p-10 bg-slate-800/50 flex justify-center">
+        <div className="a4-print-container flex-1 overflow-y-auto p-2 sm:p-6 lg:p-10 pb-28 md:pb-10 bg-slate-100/90 flex justify-center">
           {/* Authentic A4 Document Sheet: Exactly 210mm x 297mm proportions */}
-          <div className="a4-receipt-sheet w-full max-w-[794px] min-h-[1050px] bg-white text-slate-900 rounded-lg shadow-2xl p-10 md:p-12 font-sans flex flex-col justify-between border border-slate-200 select-text">
+          <div className="a4-receipt-sheet w-full max-w-[794px] min-h-[1050px] bg-white text-slate-900 rounded-lg shadow-2xl p-4 sm:p-8 md:p-12 font-sans flex flex-col justify-between border border-slate-200 select-text">
             {/* Top Security Header & Brand */}
             <div>
-              <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b-2 border-slate-900 pb-4 sm:pb-6 mb-4 sm:mb-6 gap-4">
                 {/* Organization Brand */}
                 <div className="space-y-2 max-w-sm">
-                  {org.logoUrl ? (
+                  {org.logoUrl || '/kero-logo.png' ? (
                     <img
-                      src={org.logoUrl}
+                      src={org.logoUrl || '/kero-logo.png'}
                       alt={org.name}
                       className="h-12 w-auto max-w-[200px] object-contain mb-2"
                     />
@@ -244,34 +323,34 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                 </div>
 
                 {/* Right Document Title & Receipt Identifiers */}
-                <div className="text-right space-y-2">
+                <div className="text-left sm:text-right space-y-2">
                   <div className="inline-block px-3 py-1 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-sm">
-                    Official Payment Receipt
+                    Receipt
                   </div>
 
                   <div className="space-y-1 pt-1 text-xs">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-start sm:justify-end gap-2">
                       <span className="text-slate-500 font-medium">Receipt No:</span>
                       <span className="font-mono font-bold text-slate-900 text-sm">
                         {receiptNumber}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-start sm:justify-end gap-2">
                       <span className="text-slate-500">Invoice Ref:</span>
                       <span className="font-mono font-semibold text-slate-800">
                         {invoice.invoiceNumber}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-start sm:justify-end gap-2">
                       <span className="text-slate-500">Payment Date:</span>
                       <span className="font-mono font-semibold text-slate-800">
                         {paymentDate}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-start sm:justify-end gap-2">
                       <span className="text-slate-500">Timestamp:</span>
                       <span className="font-mono text-slate-600 text-[11px]">
                         {paymentTime} UTC
@@ -282,39 +361,39 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
               </div>
 
               {/* Settlement Summary Banner */}
-              <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-md p-3.5 sm:p-4 mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-0.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Payment Status
                   </div>
-                  <div className="text-base font-black text-emerald-700 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <div className="text-sm sm:text-base font-black text-emerald-700 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0" />
                     <span>Funds Received & Cleared</span>
                   </div>
-                  <div className="text-xs text-slate-600">
+                  <div className="text-[11px] sm:text-xs text-slate-600">
                     Settled via <strong className="text-slate-800">{paymentMethod}</strong>
                   </div>
                 </div>
 
                 <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Amount Paid
                   </div>
-                  <div className="text-2xl font-black font-mono text-slate-900">
+                  <div className="text-xl sm:text-2xl font-black font-mono text-slate-900">
                     {invoice.currency}{' '}
                     {invoice.totalAmount.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </div>
-                  <div className="text-[11px] font-bold text-emerald-700 font-mono">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-emerald-700 font-mono">
                     Zero Outstanding Balance (0.00 Due)
                   </div>
                 </div>
               </div>
 
               {/* Parties Grid (Received From / Billed To) */}
-              <div className="grid grid-cols-2 gap-8 pb-6 border-b border-slate-200 mb-6 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 pb-4 sm:pb-6 border-b border-slate-200 mb-4 sm:mb-6 text-xs">
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Received From (Payer)
@@ -337,10 +416,10 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Transaction & Verification Details
                   </div>
-                  <div className="space-y-1 font-mono text-slate-700">
+                  <div className="space-y-1 font-mono text-slate-700 text-[11px] sm:text-xs">
                     <div>
                       <span className="text-slate-500">Transaction ID: </span>
-                      <strong className="text-slate-900">{transactionId}</strong>
+                      <strong className="text-slate-900 break-all">{transactionId}</strong>
                     </div>
                     <div>
                       <span className="text-slate-500">Settlement Gateway: </span>
@@ -358,12 +437,39 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                 </div>
               </div>
 
-              {/* Line Items Table */}
-              <div className="mb-6">
+              {/* Line Items Schedule: Mobile Cards + Desktop Table */}
+              <div className="mb-4 sm:mb-6">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
                   Payment Deliverables & Line Item Schedule
                 </div>
-                <table className="w-full text-left text-xs border border-slate-200 rounded overflow-hidden">
+
+                {/* Smartphone Card Layout (< 640px) */}
+                <div className="block sm:hidden space-y-2">
+                  {invoice.items.map((item, idx) => (
+                    <div
+                      key={`mob-item-${item.id || idx}`}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-semibold text-slate-900 leading-snug">
+                          {item.description}
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 shrink-0">
+                          {invoice.currency} {item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-0.5 border-t border-slate-200/60">
+                        <span>
+                          {item.quantity} × {invoice.currency} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                        <span>Tax: {item.taxRate}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop High-Density Table (>= 640px) */}
+                <table className="hidden sm:table w-full text-left text-xs border border-slate-200 rounded overflow-hidden">
                   <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
                     <tr>
                       <th className="py-2.5 px-3">Description</th>
@@ -398,11 +504,11 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
               </div>
 
               {/* Settlement Totals Breakdown & Official Stamp */}
-              <div className="grid grid-cols-2 gap-8 pt-2 pb-6 border-b border-slate-200 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 pt-2 pb-6 border-b border-slate-200 mb-6">
                 {/* Official Paid Stamp Simulation */}
-                <div className="flex items-center">
+                <div className="flex items-center justify-center sm:justify-start">
                   {showStamp && (
-                    <div className="relative border-4 border-emerald-600 border-dashed rounded-lg p-3.5 max-w-[280px] bg-emerald-50/50 rotate-[-2deg] select-none">
+                    <div className="relative border-4 border-emerald-600 border-dashed rounded-lg p-3 sm:p-3.5 max-w-[280px] w-full bg-emerald-50/50 rotate-[-2deg] select-none">
                       <div className="flex items-center gap-1.5 text-emerald-800 font-black text-sm uppercase tracking-wider">
                         <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                         <span>PAID IN FULL</span>
@@ -413,7 +519,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                       <div className="text-[9px] font-mono text-emerald-700 truncate">
                         AUTH: {transactionId}
                       </div>
-                      <div className="text-[9px] text-emerald-800 uppercase font-bold tracking-tight mt-0.5">
+                      <div className="text-[9px] text-emerald-800 uppercase font-bold tracking-tight mt-0.5 truncate">
                         {org.legalName}
                       </div>
                     </div>
@@ -471,7 +577,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
 
             {/* Bottom Official Sign-Off & Microprint */}
             <div className="pt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-8 text-[11px] text-slate-500">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 text-[11px] text-slate-500">
                 <div>
                   <div className="font-bold text-slate-800 uppercase text-[10px] tracking-wider mb-1">
                     Receipt Terms & Certification
@@ -484,7 +590,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                   </p>
                 </div>
 
-                <div className="text-right space-y-1">
+                <div className="text-left sm:text-right space-y-1">
                   <div className="font-bold text-slate-800 uppercase text-[10px] tracking-wider mb-1">
                     Authorized Electronic Sign-off
                   </div>
@@ -501,17 +607,38 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
               </div>
 
               {/* Security Microprint footer */}
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-400">
+              <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-[10px] text-slate-400 gap-1.5">
                 <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  <span>
-                    Secured by Invox Enterprise SaaS Platform · 256-Bit SSL Tamper-Evident Ledger
+                  <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span className="truncate">
+                    Secured by KERO INVOICE SaaS · 256-Bit SSL Tamper-Evident Ledger
                   </span>
                 </div>
                 <div className="font-mono">Page 1 of 1 · DIN A4 (210 × 297 mm)</div>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Natural Thumb Zone Sticky Action Bar for Smartphones */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 z-40 flex items-center gap-2 no-print shadow-2xl">
+          <button
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="flex-1 min-h-[44px] px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>{isExportingPdf ? 'Exporting PDF...' : 'Export A4 PDF'}</span>
+          </button>
+
+          <button
+            onClick={handleEmailReceipt}
+            className="min-h-[44px] px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 border border-slate-700 active:scale-[0.98] transition-all cursor-pointer"
+            title="Email Receipt to Client"
+          >
+            <Mail className="w-4 h-4 text-indigo-400" />
+            <span>Email</span>
+          </button>
         </div>
       </div>
     </div>

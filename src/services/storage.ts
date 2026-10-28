@@ -19,6 +19,13 @@ import {
   ClientPortalSettings,
   SaaSSubscriptionTransaction,
   TenantQueryLog,
+  SupportTicket,
+  TicketMessage,
+  TicketPriority,
+  TicketEscalationLevel,
+  AutomatedNotificationDispatch,
+  TicketStatus,
+  TicketCategory,
 } from '../types';
 import { cacheEngine } from './cacheEngine';
 import { emailService } from './emailService';
@@ -45,16 +52,25 @@ const STORAGE_KEYS = {
   AUTH_EXPIRES: 'invox_saas_auth_expires_v3',
   SAAS_REVENUE_TRANSACTIONS: 'invox_saas_revenue_transactions_v3',
   TENANT_QUERY_LOGS: 'invox_saas_tenant_query_logs_v3',
+  SUPPORT_TICKETS: 'invox_saas_support_tickets_v3',
 };
+
+// Standard Professional Enterprise Commercial Terms & Conditions
+export const DEFAULT_ENTERPRISE_TERMS = 
+`1. Payment Terms: Payment is strictly due within 30 days of invoice issuance (Net 30) or per agreed commercial terms. Late payments accrue statutory interest at 1.5% per month.
+2. Remittance: Please quote the Invoice Number as payment reference on all electronic wire and bank transfers.
+3. Retention of Title: Title to deliverables and intellectual property rights remain with the issuer until payment in full has cleared.
+4. Discrepancies: Any invoice discrepancy or query must be notified in writing within 7 business days of receipt.
+5. Electronic Verification: This invoice is tamper-evident, ledger-certified, and verifiable via cryptographic hash QR code.`;
 
 // Multi-Tenant SaaS Organizations Network
 const INITIAL_ORGS: OrganizationSettings[] = [
   {
     id: 'org_enterprise_primary',
-    name: 'Enterprise Cloud Invoicing',
-    legalName: 'Enterprise Cloud Solutions Ltd',
-    slug: 'enterprise-invoicing',
-    logoUrl: '',
+    name: 'KERO INVOICE SaaS',
+    legalName: 'KERO Technology & Solutions Ltd',
+    slug: 'kero-invoice',
+    logoUrl: '/kero-logo.png',
     taxId: 'GB-VAT-902817294',
     email: 'onekalitkenneth@gmail.com',
     phone: '+44 20 7946 0192',
@@ -67,7 +83,7 @@ const INITIAL_ORGS: OrganizationSettings[] = [
     website: 'https://enterprise-invoicing.io',
     currency: 'USD',
     defaultPaymentTerms: 'Net 30',
-    invoiceTermsAndConditions: 'Payment is due within 30 days of invoice issuance. Thank you for your business.',
+    invoiceTermsAndConditions: DEFAULT_ENTERPRISE_TERMS,
     bankDetails: {
       bankName: 'Barclays Commercial Banking',
       accountHolderName: 'Enterprise Cloud Solutions Ltd',
@@ -320,6 +336,15 @@ const INITIAL_USERS: User[] = [
     id: 'usr_super_admin',
     name: 'Kenneth Onekalit',
     email: 'onekalitkenneth@gmail.com',
+    role: 'super_admin',
+    organizationId: 'org_enterprise_primary',
+    createdAt: '2026-08-01T00:00:00.000Z',
+    lastActive: new Date().toISOString(),
+  },
+  {
+    id: 'usr_troubleshoot_lead',
+    name: 'Kenneth Onekalit (SaaS Ops & Troubleshooting)',
+    email: 'troubleshoot@kero-saas.internal',
     role: 'super_admin',
     organizationId: 'org_enterprise_primary',
     createdAt: '2026-08-01T00:00:00.000Z',
@@ -628,6 +653,110 @@ const SEED_EXPENSES: Expense[] = [
   },
 ];
 
+const SEED_INVENTORY: InventoryItem[] = [
+  {
+    id: 'inv_srv_001',
+    organizationId: 'org_enterprise_primary',
+    sku: 'SKU-SRV-7501',
+    name: 'Dell PowerEdge R750 Enterprise Server Rack',
+    category: 'Hardware & Servers',
+    unit: 'units',
+    unitCost: 3850,
+    sellingPrice: 4950,
+    currentStock: 8,
+    lowStockThreshold: 3,
+    department: 'IT Infrastructure',
+    branch: 'Main HQ - London',
+    supplierId: 'ven_dell_ent',
+    supplierName: 'Dell Technologies Enterprise',
+    reorderQuantity: 5,
+    lastRestockedAt: '2026-10-14T15:20:00.000Z',
+    addedBy: 'Kenneth Onekalit (super_admin)',
+    notes: 'Dual Intel Xeon Gold, 128GB ECC RAM, 8x 1.92TB NVMe SSDs.',
+    createdAt: '2026-09-01T08:00:00.000Z',
+  },
+  {
+    id: 'inv_ram_002',
+    organizationId: 'org_enterprise_primary',
+    sku: 'SKU-RAM-128G',
+    name: '128GB DDR4 ECC Registered Server Memory Kit',
+    category: 'Hardware & Components',
+    unit: 'kits',
+    unitCost: 480,
+    sellingPrice: 650,
+    currentStock: 14,
+    lowStockThreshold: 5,
+    department: 'IT Infrastructure',
+    branch: 'Main HQ - London',
+    supplierId: 'ven_dell_ent',
+    supplierName: 'Dell Technologies Enterprise',
+    reorderQuantity: 10,
+    lastRestockedAt: '2026-10-14T15:20:00.000Z',
+    addedBy: 'Kenneth Onekalit (super_admin)',
+    notes: 'PC4-25600 3200MHz Registered ECC DIMMs for server node expansions.',
+    createdAt: '2026-09-05T09:30:00.000Z',
+  },
+  {
+    id: 'inv_mon_003',
+    organizationId: 'org_enterprise_primary',
+    sku: 'SKU-MON-4K32',
+    name: 'Dell UltraSharp 32" 4K USB-C Hub Monitor (U3223QE)',
+    category: 'Peripherals & Displays',
+    unit: 'units',
+    unitCost: 620,
+    sellingPrice: 850,
+    currentStock: 2,
+    lowStockThreshold: 4,
+    department: 'Operations',
+    branch: 'Regional Hub - New York',
+    supplierId: 'ven_dell_ent',
+    supplierName: 'Dell Technologies Enterprise',
+    reorderQuantity: 6,
+    lastRestockedAt: '2026-09-20T11:00:00.000Z',
+    addedBy: 'Sarah Jenkins (org_admin)',
+    notes: 'IPS Black technology, 90W Power Delivery, RJ45 Gigabit Ethernet.',
+    createdAt: '2026-09-10T10:00:00.000Z',
+  },
+  {
+    id: 'inv_lic_004',
+    organizationId: 'org_enterprise_primary',
+    sku: 'SKU-LIC-GHE25',
+    name: 'GitHub Enterprise 25-Seat Developer License Tier',
+    category: 'Software & Licenses',
+    unit: 'licenses',
+    unitCost: 525,
+    sellingPrice: 680,
+    currentStock: 25,
+    lowStockThreshold: 5,
+    department: 'Engineering',
+    branch: 'Main HQ - London',
+    reorderQuantity: 10,
+    lastRestockedAt: '2026-10-16T12:00:00.000Z',
+    addedBy: 'Kenneth Onekalit (super_admin)',
+    notes: 'Annual license bundle for private microservice repositories.',
+    createdAt: '2026-10-01T08:00:00.000Z',
+  },
+  {
+    id: 'inv_cab_005',
+    organizationId: 'org_enterprise_primary',
+    sku: 'SKU-CAB-CAT6A',
+    name: 'Cat6A 10Gbps Shielded Network Patch Cables (50m Reel)',
+    category: 'Networking & Cabling',
+    unit: 'boxes',
+    unitCost: 85,
+    sellingPrice: 130,
+    currentStock: 32,
+    lowStockThreshold: 10,
+    department: 'Logistics',
+    branch: 'EMEA Distribution - Dublin',
+    reorderQuantity: 20,
+    lastRestockedAt: '2026-09-25T14:00:00.000Z',
+    addedBy: 'Marcus Thorne (billing_manager)',
+    notes: 'Snagless shielded S/FTP 10 Gigabit high-speed interconnects.',
+    createdAt: '2026-09-12T13:45:00.000Z',
+  },
+];
+
 const SEED_SAAS_REVENUE_TRANSACTIONS: SaaSSubscriptionTransaction[] = [
   {
     id: 'sub_txn_oct_apex',
@@ -841,6 +970,198 @@ const SEED_TENANT_QUERY_LOGS: TenantQueryLog[] = [
   },
 ];
 
+const SEED_SUPPORT_TICKETS: SupportTicket[] = [
+  {
+    id: 'tkt_001_apex_latency',
+    ticketNumber: 'TICK-2026-101',
+    organizationId: 'org_apex_tech',
+    organizationName: 'Apex Cloud Technologies Inc.',
+    createdById: 'usr_marcus_apex',
+    createdByName: 'Marcus Vance',
+    createdByEmail: 'marcus@apexcloud.io',
+    category: 'slow_query_performance',
+    priority: 'urgent',
+    escalationLevel: 'critical',
+    status: 'open',
+    assignedAdminName: 'Kenneth Onekalit',
+    assignedAdminEmail: 'onekalitkenneth@gmail.com',
+    automatedRoutingTriggered: true,
+    automatedRoutingDispatches: [
+      {
+        id: 'ard_001_slack',
+        ticketId: 'tkt_001_apex_latency',
+        ticketNumber: 'TICK-2026-101',
+        escalationLevel: 'critical',
+        channel: 'slack',
+        recipient: '#platform-critical-incidents',
+        timestamp: '2026-10-21T08:30:05.000Z',
+        status: 'delivered',
+        payloadSummary: '🚨 [CRITICAL ESCALATION] Apex Cloud Technologies opened TICK-2026-101: High latency on invoice query (>340ms unindexed). Auto-routed to senior platform admin Kenneth Onekalit. SLA: <30m.',
+        slackChannel: '#platform-critical-incidents',
+      },
+      {
+        id: 'ard_001_email',
+        ticketId: 'tkt_001_apex_latency',
+        ticketNumber: 'TICK-2026-101',
+        escalationLevel: 'critical',
+        channel: 'email',
+        recipient: 'onekalitkenneth@gmail.com',
+        timestamp: '2026-10-21T08:30:06.000Z',
+        status: 'delivered',
+        payloadSummary: 'High-priority SES dispatch sent to senior platform admin Kenneth Onekalit (onekalitkenneth@gmail.com)',
+        emailSubject: '🚨 [CRITICAL INCIDENT] Ticket TICK-2026-101 opened by Apex Cloud Technologies Inc. - Immediate Action Required',
+      },
+    ],
+    subject: 'High latency on invoice query during month-end financial reporting',
+    description: 'Our finance team noticed our invoice export query is taking 342ms and scanning hundreds of documents unindexed. Can the platform engineering team inspect and deploy the composite index on organizationId and createdAt?',
+    createdAt: '2026-10-21T08:30:00.000Z',
+    updatedAt: '2026-10-21T08:30:00.000Z',
+    tags: ['firestore-index', 'sla-critical', 'auto-routed-slack', 'month-end'],
+    messages: [
+      {
+        id: 'msg_001_1',
+        senderId: 'usr_marcus_apex',
+        senderName: 'Marcus Vance',
+        senderEmail: 'marcus@apexcloud.io',
+        senderRole: 'tenant_admin',
+        message: 'Hello Support Team, we are preparing for our monthly board review and notice the invoice list query in our workspace is taking >300ms. Could you inspect our query execution profile?',
+        timestamp: '2026-10-21T08:30:00.000Z',
+      },
+      {
+        id: 'msg_001_sys',
+        senderId: 'sys_router',
+        senderName: 'Automated Incident Router',
+        senderEmail: 'alerts@kero-saas.internal',
+        senderRole: 'system',
+        message: '🚨 [Automated Routing Engine] Critical escalation level detected. Senior Platform Admin Kenneth Onekalit notified via Slack channel #platform-critical-incidents and high-priority email to onekalitkenneth@gmail.com. Response SLA: 30 minutes.',
+        timestamp: '2026-10-21T08:30:05.000Z',
+      },
+    ],
+  },
+  {
+    id: 'tkt_002_quantum_sub',
+    ticketNumber: 'TICK-2026-102',
+    organizationId: 'org_quantum_ai',
+    organizationName: 'Quantum AI Systems Ltd',
+    createdById: 'usr_aris_quantum',
+    createdByName: 'Dr. Aris Thorne',
+    createdByEmail: 'aris@quantumai.dev',
+    category: 'billing_invoicing',
+    priority: 'high',
+    escalationLevel: 'high',
+    status: 'in_progress',
+    subject: 'Enterprise Pro subscription renewal confirmation & EU reverse-charge VAT receipt',
+    description: 'We noticed our $19.00/mo Enterprise Pro charge was collected. We need to verify that reverse-charge EU VAT was recorded on the official A4 receipt and that our custom API quotas remain unlimited.',
+    createdAt: '2026-10-21T09:15:00.000Z',
+    updatedAt: '2026-10-21T09:40:00.000Z',
+    assignedAdminName: 'Kenneth Onekalit',
+    assignedAdminEmail: 'onekalitkenneth@gmail.com',
+    tags: ['billing', 'mrr-enterprise', 'vat-receipt'],
+    messages: [
+      {
+        id: 'msg_002_1',
+        senderId: 'usr_aris_quantum',
+        senderName: 'Dr. Aris Thorne',
+        senderEmail: 'aris@quantumai.dev',
+        senderRole: 'tenant_admin',
+        message: 'Hi Kenneth, our subscription renewed for $19.00. Could you verify our VAT reverse-charge status for our quarterly EU corporate return and confirm the receipt breakdown?',
+        timestamp: '2026-10-21T09:15:00.000Z',
+      },
+      {
+        id: 'msg_002_2',
+        senderId: 'usr_super_admin',
+        senderName: 'Kenneth Onekalit (SaaS Lead)',
+        senderEmail: 'onekalitkenneth@gmail.com',
+        senderRole: 'super_admin',
+        message: 'Hello Dr. Thorne, I have verified your EU VAT ID in our Stripe billing portal. The reverse-charge flag is active on all automated invoices and a clean A4 receipt has been generated with transaction hash.',
+        timestamp: '2026-10-21T09:40:00.000Z',
+      },
+    ],
+  },
+  {
+    id: 'tkt_003_nordic_drive',
+    ticketNumber: 'TICK-2026-103',
+    organizationId: 'org_nordic_media',
+    organizationName: 'Nordic Media Group AB',
+    createdById: 'usr_freja_nordic',
+    createdByName: 'Freja Lindstrom',
+    createdByEmail: 'freja@nordicmedia.se',
+    category: 'drive_integration',
+    priority: 'medium',
+    escalationLevel: 'medium',
+    status: 'waiting_on_tenant',
+    subject: 'Google Drive automatic PDF sync folder permissions for marketing department',
+    description: 'Our design team wants the PDF invoices synced to a shared Google Drive team drive instead of personal drive. Can you advise on the OAuth scope permissions?',
+    createdAt: '2026-10-20T16:45:00.000Z',
+    updatedAt: '2026-10-20T17:10:00.000Z',
+    assignedAdminName: 'Kenneth Onekalit',
+    assignedAdminEmail: 'onekalitkenneth@gmail.com',
+    tags: ['google-drive', 'oauth', 'pdf-sync'],
+    messages: [
+      {
+        id: 'msg_003_1',
+        senderId: 'usr_freja_nordic',
+        senderName: 'Freja Lindstrom',
+        senderEmail: 'freja@nordicmedia.se',
+        senderRole: 'tenant_admin',
+        message: 'We configured Google Drive auto-sync, but want to point it to our shared Team Drive "Nordic Media - Client Invoices". How do we grant the service account access?',
+        timestamp: '2026-10-20T16:45:00.000Z',
+      },
+      {
+        id: 'msg_003_2',
+        senderId: 'usr_super_admin',
+        senderName: 'Kenneth Onekalit (SaaS Lead)',
+        senderEmail: 'onekalitkenneth@gmail.com',
+        senderRole: 'super_admin',
+        message: 'Hi Freja, you can grant "Content Manager" permissions to the connected Google OAuth account in your Google Drive Admin settings. Let us know if you encounter any scope errors!',
+        timestamp: '2026-10-20T17:10:00.000Z',
+      },
+    ],
+  },
+  {
+    id: 'tkt_004_solis_quota',
+    ticketNumber: 'TICK-2026-104',
+    organizationId: 'org_solis_green',
+    organizationName: 'Solis Green Energy Ltd',
+    createdById: 'usr_claire_solis',
+    createdByName: 'Claire Davies',
+    createdByEmail: 'claire@solisenergy.co.uk',
+    category: 'billing_invoicing',
+    priority: 'low',
+    escalationLevel: 'low',
+    status: 'resolved',
+    subject: 'Request to reset starter quota while evaluating Pro tier upgrade',
+    description: 'We reached 10 invoices on our test run while training our team on invoice design and multi-currency billing. Can we get an extension or reset before our fiscal year upgrade?',
+    createdAt: '2026-10-19T11:20:00.000Z',
+    updatedAt: '2026-10-19T14:10:00.000Z',
+    resolvedAt: '2026-10-19T14:10:00.000Z',
+    resolutionSummary: 'Starter invoice quota reset to 0 and 14-day trial activated.',
+    assignedAdminName: 'Kenneth Onekalit',
+    assignedAdminEmail: 'onekalitkenneth@gmail.com',
+    tags: ['quota-reset', 'trial', 'pro-evaluation'],
+    messages: [
+      {
+        id: 'msg_004_1',
+        senderId: 'usr_claire_solis',
+        senderName: 'Claire Davies',
+        senderEmail: 'claire@solisenergy.co.uk',
+        senderRole: 'tenant_admin',
+        message: 'We reached 10 invoices on our test run. Can we get an extension to test client portal features before upgrading to Pro?',
+        timestamp: '2026-10-19T11:20:00.000Z',
+      },
+      {
+        id: 'msg_004_2',
+        senderId: 'usr_super_admin',
+        senderName: 'Kenneth Onekalit (SaaS Lead)',
+        senderEmail: 'onekalitkenneth@gmail.com',
+        senderRole: 'super_admin',
+        message: 'Hi Claire, I have reset your starter invoice quota back to 0 so you can continue testing, and our team is standing by if you need assistance with client portals.',
+        timestamp: '2026-10-19T14:10:00.000Z',
+      },
+    ],
+  },
+];
+
 class StorageService {
   private getStorageItem<T>(key: string, defaultVal: T): T {
     try {
@@ -928,6 +1249,9 @@ class StorageService {
     if (!localStorage.getItem(STORAGE_KEYS.TENANT_QUERY_LOGS)) {
       this.setStorageItem(STORAGE_KEYS.TENANT_QUERY_LOGS, SEED_TENANT_QUERY_LOGS);
     }
+    if (!localStorage.getItem(STORAGE_KEYS.SUPPORT_TICKETS)) {
+      this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, SEED_SUPPORT_TICKETS);
+    }
     if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_ORG_ID)) {
       this.setStorageItem(STORAGE_KEYS.ACTIVE_ORG_ID, 'org_enterprise_primary');
     }
@@ -943,10 +1267,12 @@ class StorageService {
       localStorage.removeItem(STORAGE_KEYS.CLIENTS);
       localStorage.removeItem(STORAGE_KEYS.AUDIT_LOGS);
       localStorage.removeItem(STORAGE_KEYS.API_KEYS);
+      localStorage.removeItem(STORAGE_KEYS.SUPPORT_TICKETS);
       this.setStorageItem(STORAGE_KEYS.INVOICES, []);
       this.setStorageItem(STORAGE_KEYS.CLIENTS, []);
       this.setStorageItem(STORAGE_KEYS.AUDIT_LOGS, []);
       this.setStorageItem(STORAGE_KEYS.API_KEYS, []);
+      this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, SEED_SUPPORT_TICKETS);
       cacheEngine.flushAll();
     } catch (err) {
       console.error('Error purging demo data:', err);
@@ -1027,6 +1353,9 @@ class StorageService {
     const orgs = this.getInternalAllOrganizations();
     const org = orgs.find(o => o.id === orgId);
     if (org) {
+      if (!org.logoUrl) {
+        org.logoUrl = '/kero-logo.png';
+      }
       cacheEngine.set(cacheKey, org, 180);
     }
     return org;
@@ -1224,6 +1553,26 @@ class StorageService {
 
     this.saveOrganization(updatedOrg);
 
+    // Record SaaS revenue transaction for platform admin collection
+    const txns = this.getSaaSRevenueTransactions();
+    const newTxn: SaaSSubscriptionTransaction = {
+      id: 'sub_txn_' + Math.random().toString(36).substring(2, 9),
+      organizationId: org.id,
+      organizationName: org.name,
+      planName: 'Pro',
+      amount: 2.0,
+      currency: org.currency || 'USD',
+      billingCycle: 'monthly',
+      status: 'settled',
+      paymentGateway: `Stripe Direct (${cardDetails.brand} •••• ${cardDetails.last4})`,
+      transactionId: 'ch_stripe_' + Math.random().toString(36).substring(2, 10),
+      timestamp: new Date().toISOString(),
+      invoiceCount: org.invoiceCount || 0,
+      cardLast4: cardDetails.last4,
+    };
+    txns.unshift(newTxn);
+    this.setStorageItem(STORAGE_KEYS.SAAS_REVENUE_TRANSACTIONS, txns);
+
     this.addAuditLog({
       organizationId: orgId,
       actorId: actor.id,
@@ -1234,7 +1583,7 @@ class StorageService {
       resourceType: 'subscription',
       resourceId: orgId,
       status: 'success',
-      details: `Subscribed to Invox Pro ($2.00/mo) via ${cardDetails.brand} (•••• ${cardDetails.last4}) & Stripe billing portal`,
+      details: `Subscribed to KERO INVOICE Pro ($2.00/mo) via ${cardDetails.brand} (•••• ${cardDetails.last4}) & Stripe billing portal`,
       diff: {
         before: { plan: org.plan, status: org.subscriptionStatus },
         after: { plan: 'pro', status: 'active', amount: '2.00 USD/mo' },
@@ -1303,6 +1652,11 @@ class StorageService {
 
     const org = this.getOrganization(invoice.organizationId);
     if (!org) return { success: false, error: 'Organization not found' };
+
+    // Ensure invoice has professional Terms & Conditions
+    if (!invoice.termsAndConditions || !invoice.termsAndConditions.trim()) {
+      invoice.termsAndConditions = org.invoiceTermsAndConditions || DEFAULT_ENTERPRISE_TERMS;
+    }
 
     const allInvoices = this.getStorageItem<Invoice[]>(STORAGE_KEYS.INVOICES, SEED_INVOICES);
     const existingIndex = allInvoices.findIndex(i => i.id === invoice.id);
@@ -1580,9 +1934,15 @@ class StorageService {
     orgId: string,
     actor: User
   ): User {
-    const activeOrgId = this.getActiveOrgId();
-    if (orgId !== activeOrgId || actor.organizationId !== orgId) {
-      throw new Error('Access denied: Cannot invite user to another organization');
+    const isSuperAdmin = actor.role === 'super_admin';
+    const isOrgAdmin = actor.role === 'org_admin' && actor.organizationId === orgId;
+
+    if (!isSuperAdmin && !isOrgAdmin) {
+      throw new Error('Access denied: Only Org Admin or Platform Super Admin can invite team members.');
+    }
+
+    if (role === 'super_admin' && !isSuperAdmin) {
+      throw new Error('Tenants cannot assign the platform super_admin role.');
     }
 
     const newUser: User = {
@@ -1615,8 +1975,14 @@ class StorageService {
   }
 
   public updateUserRole(userId: string, newRole: UserRole, orgId: string, actor: User): boolean {
-    const activeOrgId = this.getActiveOrgId();
-    if (orgId !== activeOrgId || actor.organizationId !== orgId) {
+    const isSuperAdmin = actor.role === 'super_admin';
+    const isOrgAdmin = actor.role === 'org_admin' && actor.organizationId === orgId;
+
+    if (!isSuperAdmin && !isOrgAdmin) {
+      return false;
+    }
+
+    if (newRole === 'super_admin' && !isSuperAdmin) {
       return false;
     }
 
@@ -1643,6 +2009,41 @@ class StorageService {
         before: { role: oldRole },
         after: { role: newRole },
       },
+    });
+
+    return true;
+  }
+
+  public removeUserFromOrg(userId: string, orgId: string, actor: User): boolean {
+    const isSuperAdmin = actor.role === 'super_admin';
+    const isOrgAdmin = actor.role === 'org_admin' && actor.organizationId === orgId;
+
+    if (!isSuperAdmin && !isOrgAdmin) {
+      throw new Error('Access denied: Only Org Admin or Platform Super Admin can remove team members.');
+    }
+
+    if (userId === actor.id) {
+      throw new Error('Cannot remove yourself from the organization.');
+    }
+
+    const users = this.getInternalAllUsers();
+    const target = users.find(u => u.id === userId && u.organizationId === orgId);
+    if (!target) return false;
+
+    const remaining = users.filter(u => !(u.id === userId && u.organizationId === orgId));
+    this.setInternalUsers(remaining);
+
+    this.addAuditLog({
+      organizationId: orgId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'USER_REMOVED',
+      resourceType: 'user',
+      resourceId: userId,
+      status: 'warning',
+      details: `Removed team member ${target.name} (${target.email}) from tenant organization`,
     });
 
     return true;
@@ -2096,16 +2497,23 @@ class StorageService {
   public getInventoryItems(orgId: string): InventoryItem[] {
     const activeOrgId = this.getActiveOrgId();
     if (orgId !== activeOrgId) return [];
-    return this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []).filter(i => i.organizationId === orgId);
+    return this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, SEED_INVENTORY).filter(i => i.organizationId === orgId);
   }
 
   public saveInventoryItem(item: InventoryItem, actor?: User): void {
     const activeOrgId = this.getActiveOrgId();
     if (item.organizationId !== activeOrgId) return;
 
-    const all = this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []);
+    if (!item.addedBy && actor) {
+      item.addedBy = `${actor.name} (${actor.role})`;
+      item.addedById = actor.id;
+    }
+
+    const all = this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, SEED_INVENTORY);
     const idx = all.findIndex(i => i.id === item.id);
-    if (idx >= 0) {
+    const isNew = idx < 0;
+
+    if (!isNew) {
       all[idx] = item;
     } else {
       all.unshift(item);
@@ -2119,11 +2527,11 @@ class StorageService {
         actorName: actor.name,
         actorEmail: actor.email,
         actorRole: actor.role,
-        action: 'SETTINGS_UPDATED',
+        action: isNew ? 'USER_INVITED' : 'SETTINGS_UPDATED',
         resourceType: 'organization',
         resourceId: item.id,
         status: 'success',
-        details: `Updated inventory item: ${item.name} (${item.sku}), stock: ${item.currentStock} ${item.unit}`,
+        details: `${isNew ? 'Added new' : 'Updated'} inventory item '${item.name}' (SKU: ${item.sku}) in ${item.department} / ${item.branch}. Stock: ${item.currentStock} ${item.unit}. Added by: ${item.addedBy || actor.name}.`,
       });
     }
   }
@@ -2132,9 +2540,25 @@ class StorageService {
     const activeOrgId = this.getActiveOrgId();
     if (orgId !== activeOrgId) return false;
 
-    const all = this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []);
+    const all = this.getStorageItem<InventoryItem[]>(STORAGE_KEYS.INVENTORY, SEED_INVENTORY);
+    const target = all.find(i => i.id === id && i.organizationId === orgId);
     const filtered = all.filter(i => !(i.id === id && i.organizationId === orgId));
     this.setStorageItem(STORAGE_KEYS.INVENTORY, filtered);
+
+    if (actor && target) {
+      this.addAuditLog({
+        organizationId: orgId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        resourceId: id,
+        status: 'warning',
+        details: `Deleted inventory item '${target.name}' (${target.sku}) from ${target.department} / ${target.branch}`,
+      });
+    }
     return true;
   }
 
@@ -2158,6 +2582,7 @@ class StorageService {
       } else if (movement.type === 'out') {
         item.currentStock = Math.max(0, item.currentStock - movement.quantity);
       }
+      item.lastRestockedAt = new Date().toISOString();
       this.saveInventoryItem(item, actor);
     }
   }
@@ -2165,6 +2590,64 @@ class StorageService {
   public getLowStockItems(orgId: string): InventoryItem[] {
     const items = this.getInventoryItems(orgId);
     return items.filter(i => i.currentStock <= i.lowStockThreshold);
+  }
+
+  public getInventorySummary(orgId: string) {
+    const items = this.getInventoryItems(orgId);
+    const totalItems = items.length;
+    const totalUnits = items.reduce((sum, i) => sum + i.currentStock, 0);
+    const totalCostValuation = items.reduce((sum, i) => sum + (i.unitCost * i.currentStock), 0);
+    const totalRetailValuation = items.reduce((sum, i) => sum + (i.sellingPrice * i.currentStock), 0);
+    const potentialGrossMargin = totalRetailValuation > 0
+      ? ((totalRetailValuation - totalCostValuation) / totalRetailValuation) * 100
+      : 0;
+    const lowStockItems = items.filter(i => i.currentStock <= i.lowStockThreshold);
+
+    // Grouping by Category
+    const categoryMap: Record<string, { count: number; units: number; costValuation: number; retailValuation: number }> = {};
+    // Grouping by Department
+    const departmentMap: Record<string, { count: number; units: number; costValuation: number; retailValuation: number }> = {};
+    // Grouping by Branch
+    const branchMap: Record<string, { count: number; units: number; costValuation: number; retailValuation: number }> = {};
+
+    items.forEach((item) => {
+      const cat = item.category || 'Uncategorized';
+      const dept = item.department || 'General Operations';
+      const br = item.branch || 'Main HQ';
+
+      const costVal = item.unitCost * item.currentStock;
+      const retVal = item.sellingPrice * item.currentStock;
+
+      if (!categoryMap[cat]) categoryMap[cat] = { count: 0, units: 0, costValuation: 0, retailValuation: 0 };
+      categoryMap[cat].count += 1;
+      categoryMap[cat].units += item.currentStock;
+      categoryMap[cat].costValuation += costVal;
+      categoryMap[cat].retailValuation += retVal;
+
+      if (!departmentMap[dept]) departmentMap[dept] = { count: 0, units: 0, costValuation: 0, retailValuation: 0 };
+      departmentMap[dept].count += 1;
+      departmentMap[dept].units += item.currentStock;
+      departmentMap[dept].costValuation += costVal;
+      departmentMap[dept].retailValuation += retVal;
+
+      if (!branchMap[br]) branchMap[br] = { count: 0, units: 0, costValuation: 0, retailValuation: 0 };
+      branchMap[br].count += 1;
+      branchMap[br].units += item.currentStock;
+      branchMap[br].costValuation += costVal;
+      branchMap[br].retailValuation += retVal;
+    });
+
+    return {
+      totalItems,
+      totalUnits,
+      totalCostValuation,
+      totalRetailValuation,
+      potentialGrossMargin,
+      lowStockItems,
+      categoryBreakdown: categoryMap,
+      departmentBreakdown: departmentMap,
+      branchBreakdown: branchMap,
+    };
   }
 
   // ==========================================
@@ -2650,9 +3133,22 @@ class StorageService {
   // ==========================================
   // SUPER ADMIN & SAAS REVENUE OPERATIONS
   // ==========================================
-  public loginAsSuperAdmin(rememberMe: boolean = true): { success: boolean; user?: User } {
+  public loginAsSuperAdmin(targetEmailOrRememberMe: string | boolean = true, rememberMe: boolean = true): { success: boolean; user?: User } {
+    let email = 'onekalitkenneth@gmail.com';
+    let isRemember = true;
+
+    if (typeof targetEmailOrRememberMe === 'string') {
+      email = targetEmailOrRememberMe;
+      isRemember = rememberMe;
+    } else {
+      isRemember = targetEmailOrRememberMe;
+    }
+
     const users = this.getStorageItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
-    let admin = users.find(u => u.email === 'onekalitkenneth@gmail.com');
+    let admin = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!admin) {
+      admin = users.find(u => u.role === 'super_admin');
+    }
     if (!admin) {
       admin = {
         id: 'usr_super_admin',
@@ -2666,7 +3162,51 @@ class StorageService {
       users.unshift(admin);
       this.setStorageItem(STORAGE_KEYS.USERS, users);
     }
-    return this.establishSession(admin, rememberMe);
+    return this.establishSession(admin, isRemember);
+  }
+
+  public getSuperAdminAccounts(): User[] {
+    const users = this.getStorageItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    return users.filter(u => u.role === 'super_admin');
+  }
+
+  public createTroubleshootingAccount(
+    data: { name: string; email: string; role?: UserRole; organizationId?: string; title?: string },
+    actor: User
+  ): User {
+    const users = this.getStorageItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    const existing = users.find(u => u.email.toLowerCase() === data.email.toLowerCase());
+    if (existing) {
+      throw new Error(`An account with email ${data.email} already exists.`);
+    }
+
+    const newAccount: User = {
+      id: 'usr_op_' + Math.random().toString(36).substring(2, 9),
+      name: data.name,
+      email: data.email,
+      role: data.role || 'super_admin',
+      organizationId: data.organizationId || 'org_enterprise_primary',
+      createdAt: new Date().toISOString(),
+      lastActive: new Date().toISOString(),
+    };
+
+    users.push(newAccount);
+    this.setStorageItem(STORAGE_KEYS.USERS, users);
+
+    this.addAuditLog({
+      organizationId: newAccount.organizationId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'USER_INVITED',
+      resourceType: 'user',
+      resourceId: newAccount.id,
+      status: 'success',
+      details: `Created new SaaS Operations & Troubleshooting Account for ${newAccount.name} (${newAccount.email}) with role ${newAccount.role}`,
+    });
+
+    return newAccount;
   }
 
   public getSaaSTenants(): OrganizationSettings[] {
@@ -2730,6 +3270,67 @@ class StorageService {
       resourceId: orgId,
       status: 'success',
       details: `Collected SaaS recurring subscription payment of ${org.currency} ${amount.toFixed(2)} from ${org.name} via ${gateway}`,
+    });
+
+    return newTxn;
+  }
+
+  public receiveTenantPayment(
+    orgId: string,
+    amount: number,
+    planName: string,
+    gateway: string,
+    reference: string,
+    actor: User
+  ): SaaSSubscriptionTransaction {
+    const isSuperAdmin = actor.role === 'super_admin';
+    if (!isSuperAdmin) {
+      throw new Error('Access denied: Only Platform Admin can record or receive payments from tenants.');
+    }
+
+    const orgs = this.getInternalAllOrganizations();
+    const org = orgs.find((o) => o.id === orgId);
+    if (!org) throw new Error('Tenant organization not found');
+
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    org.plan = 'pro';
+    org.subscriptionStatus = 'active';
+    org.subscriptionPeriodEnd = nextMonth.toISOString();
+    this.saveOrganization(org);
+
+    const txns = this.getSaaSRevenueTransactions();
+    const newTxn: SaaSSubscriptionTransaction = {
+      id: 'sub_txn_' + Math.random().toString(36).substring(2, 9),
+      organizationId: org.id,
+      organizationName: org.name,
+      planName: (planName.includes('Enterprise') ? 'Enterprise Pro' : 'Pro') as 'Pro' | 'Enterprise Pro' | 'Starter',
+      amount,
+      currency: org.currency || 'USD',
+      billingCycle: 'monthly',
+      status: 'settled',
+      paymentGateway: gateway,
+      transactionId: reference || ('pmt_' + Math.random().toString(36).substring(2, 10)),
+      timestamp: new Date().toISOString(),
+      invoiceCount: org.invoiceCount || 0,
+      cardLast4: org.cardLast4 || '4242',
+    };
+
+    txns.unshift(newTxn);
+    this.setStorageItem(STORAGE_KEYS.SAAS_REVENUE_TRANSACTIONS, txns);
+
+    this.addAuditLog({
+      organizationId: orgId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SUBSCRIPTION_UPGRADED',
+      resourceType: 'subscription',
+      resourceId: orgId,
+      status: 'success',
+      details: `Platform Admin received payment of ${org.currency || 'USD'} ${amount.toFixed(2)} from tenant ${org.name} via ${gateway}. Ref: ${reference || 'Settled'}`,
     });
 
     return newTxn;
@@ -2889,6 +3490,599 @@ class StorageService {
     this.setStorageItem(STORAGE_KEYS.TENANT_QUERY_LOGS, logs);
 
     return newLog;
+  }
+
+  // ==========================================
+  // MULTI-TENANT SUPPORT TICKET OPERATIONS
+  // ==========================================
+  public getSupportTickets(): SupportTicket[] {
+    return this.getStorageItem<SupportTicket[]>(
+      STORAGE_KEYS.SUPPORT_TICKETS,
+      SEED_SUPPORT_TICKETS
+    );
+  }
+
+  public getSupportTicketById(id: string): SupportTicket | undefined {
+    return this.getSupportTickets().find(t => t.id === id);
+  }
+
+  public createSupportTicket(
+    data: Partial<SupportTicket>,
+    initialMessage?: string,
+    actor?: User
+  ): SupportTicket {
+    const tickets = this.getSupportTickets();
+    const ticketSeq = tickets.length + 105;
+    const now = new Date().toISOString();
+    const ticketId = 'tkt_' + Math.random().toString(36).substring(2, 9);
+    const ticketNumber = `TICK-2026-${ticketSeq}`;
+    const orgId = data.organizationId || 'org_apex_tech';
+    const orgName = data.organizationName || 'Apex Cloud Technologies Inc.';
+    
+    // Determine escalation level
+    const escalationLevel: TicketEscalationLevel =
+      data.escalationLevel || (data.priority === 'urgent' ? 'critical' : 'medium');
+    const isCritical = escalationLevel === 'critical';
+
+    const messages: TicketMessage[] = [];
+    if (initialMessage) {
+      messages.push({
+        id: 'msg_' + Math.random().toString(36).substring(2, 9),
+        senderId: data.createdById || actor?.id || 'usr_tenant',
+        senderName: data.createdByName || actor?.name || 'Tenant Admin',
+        senderEmail: data.createdByEmail || actor?.email || 'admin@tenant.com',
+        senderRole: 'tenant_admin',
+        message: initialMessage,
+        timestamp: now,
+      });
+    }
+
+    let automatedDispatches: AutomatedNotificationDispatch[] | undefined = undefined;
+    let assignedAdminName = data.assignedAdminName;
+    let assignedAdminEmail = data.assignedAdminEmail;
+
+    if (isCritical) {
+      // Automated routing to senior platform admin Kenneth Onekalit
+      assignedAdminName = 'Kenneth Onekalit';
+      assignedAdminEmail = 'onekalitkenneth@gmail.com';
+
+      automatedDispatches = [
+        {
+          id: 'ard_slack_' + Math.random().toString(36).substring(2, 9),
+          ticketId,
+          ticketNumber,
+          escalationLevel: 'critical',
+          channel: 'slack',
+          recipient: '#platform-critical-incidents',
+          slackChannel: '#platform-critical-incidents',
+          timestamp: now,
+          status: 'delivered',
+          payloadSummary: `🚨 BLOCK-KIT INCIDENT: [P0 Critical] Ticket #${ticketNumber} opened by ${orgName}. Paged: Kenneth Onekalit. SLA response deadline: 30 minutes.`,
+        },
+        {
+          id: 'ard_email_' + Math.random().toString(36).substring(2, 9),
+          ticketId,
+          ticketNumber,
+          escalationLevel: 'critical',
+          channel: 'email',
+          recipient: 'onekalitkenneth@gmail.com',
+          emailSubject: `🚨 [CRITICAL INCIDENT] Ticket ${ticketNumber} opened by ${orgName} - Immediate Action Required`,
+          timestamp: now,
+          status: 'delivered',
+          payloadSummary: `High-priority SES/SMTP alert dispatched to Senior Platform Admin Kenneth Onekalit (onekalitkenneth@gmail.com) with 30-minute SLA countdown.`,
+        },
+      ];
+
+      // System audit message injected into the ticket message thread
+      messages.push({
+        id: 'msg_sys_' + Math.random().toString(36).substring(2, 9),
+        senderId: 'sys_router',
+        senderName: 'Automated Incident Router',
+        senderEmail: 'alerts@kero-saas.internal',
+        senderRole: 'system',
+        message: `🚨 [Automated Routing Engine] Critical escalation level detected. Senior Platform Admin Kenneth Onekalit has been auto-assigned and alerted via Slack channel #platform-critical-incidents and high-priority email to onekalitkenneth@gmail.com. Response SLA: 30 minutes.`,
+        timestamp: now,
+      });
+    }
+
+    const newTicket: SupportTicket = {
+      id: ticketId,
+      ticketNumber,
+      organizationId: orgId,
+      organizationName: orgName,
+      createdById: data.createdById || actor?.id || 'usr_marcus_apex',
+      createdByName: data.createdByName || actor?.name || 'Marcus Vance',
+      createdByEmail: data.createdByEmail || actor?.email || 'marcus@apexcloud.io',
+      category: data.category || 'general_inquiry',
+      priority: data.priority || (isCritical ? 'urgent' : 'medium'),
+      escalationLevel,
+      status: 'open',
+      subject: data.subject || 'Support Request',
+      description: data.description || initialMessage || 'Support inquiry from tenant.',
+      createdAt: now,
+      updatedAt: now,
+      assignedAdminName,
+      assignedAdminEmail,
+      tags: data.tags || (isCritical ? ['sla-critical', 'auto-routed-slack'] : ['tenant-support']),
+      messages,
+      automatedRoutingTriggered: isCritical,
+      automatedRoutingDispatches: automatedDispatches,
+    };
+
+    tickets.unshift(newTicket);
+    this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+    // If critical, fire the email notification service and broadcast live event
+    if (isCritical) {
+      try {
+        emailService.notifyCriticalTicketEscalation(
+          newTicket,
+          'onekalitkenneth@gmail.com',
+          'Kenneth Onekalit'
+        );
+      } catch (err) {
+        console.error('Error dispatching critical ticket email alert:', err);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('invox:critical_incident_routed', {
+            detail: { ticket: newTicket, dispatches: automatedDispatches },
+          })
+        );
+      }
+    }
+
+    if (actor) {
+      this.addAuditLog({
+        organizationId: newTicket.organizationId,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        action: 'SETTINGS_UPDATED',
+        resourceType: 'organization',
+        resourceId: newTicket.organizationId,
+        status: 'success',
+        details: `Created new support query ${newTicket.ticketNumber} (${newTicket.subject}) with escalation level ${escalationLevel.toUpperCase()} for ${newTicket.organizationName}`,
+      });
+    }
+
+    return newTicket;
+  }
+
+  public addTicketMessage(
+    ticketId: string,
+    message: string,
+    sender: User,
+    isInternalNote: boolean = false,
+    updatedStatus?: TicketStatus
+  ): SupportTicket | null {
+    const tickets = this.getSupportTickets();
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return null;
+
+    const now = new Date().toISOString();
+    const newMsg: TicketMessage = {
+      id: 'msg_' + Math.random().toString(36).substring(2, 9),
+      senderId: sender.id,
+      senderName: sender.name,
+      senderEmail: sender.email,
+      senderRole: sender.role === 'super_admin' ? 'super_admin' : 'tenant_admin',
+      message: message.trim(),
+      timestamp: now,
+      isInternalNote: isInternalNote,
+    };
+
+    ticket.messages.push(newMsg);
+    ticket.updatedAt = now;
+
+    if (updatedStatus) {
+      ticket.status = updatedStatus;
+      if (updatedStatus === 'resolved' || updatedStatus === 'closed') {
+        ticket.resolvedAt = now;
+        ticket.resolutionSummary = `Resolved by ${sender.name}: ${message.slice(0, 100)}`;
+      }
+    } else if (sender.role === 'super_admin' && !isInternalNote) {
+      if (ticket.status === 'open') {
+        ticket.status = 'in_progress';
+      }
+    }
+
+    if (sender.role === 'super_admin') {
+      ticket.assignedAdminName = sender.name;
+      ticket.assignedAdminEmail = sender.email;
+    }
+
+    this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+    this.addAuditLog({
+      organizationId: ticket.organizationId,
+      actorId: sender.id,
+      actorName: sender.name,
+      actorEmail: sender.email,
+      actorRole: sender.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: ticket.organizationId,
+      status: 'success',
+      details: `${isInternalNote ? 'Added internal staff note to' : 'Responded to'} support ticket ${ticket.ticketNumber} for ${ticket.organizationName}`,
+    });
+
+    return ticket;
+  }
+
+  public updateTicketStatus(
+    ticketId: string,
+    status: TicketStatus,
+    actor: User,
+    resolutionSummary?: string
+  ): boolean {
+    const tickets = this.getSupportTickets();
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return false;
+
+    const now = new Date().toISOString();
+    ticket.status = status;
+    ticket.updatedAt = now;
+    if (status === 'resolved' || status === 'closed') {
+      ticket.resolvedAt = now;
+      if (resolutionSummary) {
+        ticket.resolutionSummary = resolutionSummary;
+      }
+    }
+
+    this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+    this.addAuditLog({
+      organizationId: ticket.organizationId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: ticket.organizationId,
+      status: 'success',
+      details: `Updated support ticket ${ticket.ticketNumber} status to ${status.toUpperCase()} (${resolutionSummary || 'No summary'})`,
+    });
+
+    return true;
+  }
+
+  public updateTicketPriority(
+    ticketId: string,
+    priority: TicketPriority,
+    actor: User
+  ): boolean {
+    const tickets = this.getSupportTickets();
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return false;
+
+    ticket.priority = priority;
+    ticket.updatedAt = new Date().toISOString();
+    this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+    this.addAuditLog({
+      organizationId: ticket.organizationId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: ticket.organizationId,
+      status: 'success',
+      details: `Updated support ticket ${ticket.ticketNumber} priority to ${priority.toUpperCase()}`,
+    });
+
+    return true;
+  }
+
+  public assignTicketAdmin(
+    ticketId: string,
+    adminName: string,
+    adminEmail: string,
+    actor: User
+  ): boolean {
+    const tickets = this.getSupportTickets();
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return false;
+
+    ticket.assignedAdminName = adminName;
+    ticket.assignedAdminEmail = adminEmail;
+    ticket.updatedAt = new Date().toISOString();
+    this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+    this.addAuditLog({
+      organizationId: ticket.organizationId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: ticket.organizationId,
+      status: 'success',
+      details: `Assigned support ticket ${ticket.ticketNumber} to platform admin ${adminName} (${adminEmail})`,
+    });
+
+    return true;
+  }
+
+  public updateTicketEscalationLevel(
+    ticketId: string,
+    level: TicketEscalationLevel,
+    actor: User,
+    reason?: string
+  ): boolean {
+    const tickets = this.getSupportTickets();
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return false;
+
+    const previousLevel = ticket.escalationLevel || 'low';
+    ticket.escalationLevel = level;
+    const now = new Date().toISOString();
+    ticket.updatedAt = now;
+
+    if (level === 'critical') {
+      ticket.assignedAdminName = 'Kenneth Onekalit';
+      ticket.assignedAdminEmail = 'onekalitkenneth@gmail.com';
+      ticket.automatedRoutingTriggered = true;
+
+      const dispatches: AutomatedNotificationDispatch[] = [
+        {
+          id: 'ard_slack_' + Math.random().toString(36).substring(2, 9),
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          escalationLevel: 'critical',
+          channel: 'slack',
+          recipient: '#platform-critical-incidents',
+          slackChannel: '#platform-critical-incidents',
+          timestamp: now,
+          status: 'delivered',
+          payloadSummary: `🚨 BLOCK-KIT INCIDENT: [P0 Critical] Ticket #${ticket.ticketNumber} escalated by ${actor.name}. Paged: Kenneth Onekalit. SLA response deadline: 30 minutes.`,
+        },
+        {
+          id: 'ard_email_' + Math.random().toString(36).substring(2, 9),
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          escalationLevel: 'critical',
+          channel: 'email',
+          recipient: 'onekalitkenneth@gmail.com',
+          emailSubject: `🚨 [CRITICAL INCIDENT] Ticket ${ticket.ticketNumber} escalated to CRITICAL by ${actor.name} - Immediate Action Required`,
+          timestamp: now,
+          status: 'delivered',
+          payloadSummary: `High-priority SES/SMTP alert dispatched to Senior Platform Admin Kenneth Onekalit (onekalitkenneth@gmail.com). Reason: ${reason || 'Manual severity escalation'}.`,
+        },
+      ];
+
+      ticket.automatedRoutingDispatches = [
+        ...(ticket.automatedRoutingDispatches || []),
+        ...dispatches,
+      ];
+
+      ticket.messages.push({
+        id: 'msg_sys_' + Math.random().toString(36).substring(2, 9),
+        senderId: 'sys_router',
+        senderName: 'Automated Incident Router',
+        senderEmail: 'alerts@kero-saas.internal',
+        senderRole: 'system',
+        message: `🚨 [Automated Escalation] Ticket escalated from ${previousLevel.toUpperCase()} to CRITICAL by ${actor.name}.${reason ? ` Reason: "${reason}".` : ''} Senior Platform Admin Kenneth Onekalit alerted via Slack channel #platform-critical-incidents and priority email to onekalitkenneth@gmail.com. Response SLA: 30 minutes.`,
+        timestamp: now,
+      });
+
+      try {
+        emailService.notifyCriticalTicketEscalation(
+          ticket,
+          'onekalitkenneth@gmail.com',
+          'Kenneth Onekalit'
+        );
+      } catch (err) {
+        console.error('Error dispatching critical escalation email:', err);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('invox:critical_incident_routed', {
+            detail: { ticket, dispatches },
+          })
+        );
+      }
+    } else {
+      ticket.messages.push({
+        id: 'msg_sys_' + Math.random().toString(36).substring(2, 9),
+        senderId: 'sys_router',
+        senderName: 'Automated Incident Router',
+        senderEmail: 'alerts@kero-saas.internal',
+        senderRole: 'system',
+        message: `ℹ️ Escalation level updated from ${previousLevel.toUpperCase()} to ${level.toUpperCase()} by ${actor.name}.${reason ? ` Reason: ${reason}` : ''}`,
+        timestamp: now,
+      });
+    }
+
+    this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+    this.addAuditLog({
+      organizationId: ticket.organizationId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: ticket.organizationId,
+      status: 'success',
+      details: `Updated support ticket ${ticket.ticketNumber} escalation level to ${level.toUpperCase()}${reason ? ` (${reason})` : ''}`,
+    });
+
+    return true;
+  }
+
+  public dispatchCriticalRoutingAlert(ticketId: string, actor: User): boolean {
+    const tickets = this.getSupportTickets();
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return false;
+
+    const now = new Date().toISOString();
+    ticket.automatedRoutingTriggered = true;
+    const dispatches: AutomatedNotificationDispatch[] = [
+      {
+        id: 'ard_slack_' + Math.random().toString(36).substring(2, 9),
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        escalationLevel: ticket.escalationLevel || 'critical',
+        channel: 'slack',
+        recipient: '#platform-critical-incidents',
+        slackChannel: '#platform-critical-incidents',
+        timestamp: now,
+        status: 'delivered',
+        payloadSummary: `🚨 RE-TRIGGERED SLACK ALERT: Ticket #${ticket.ticketNumber} (${ticket.subject}) pushed to #platform-critical-incidents by ${actor.name}. Paged: Kenneth Onekalit.`,
+      },
+      {
+        id: 'ard_email_' + Math.random().toString(36).substring(2, 9),
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        escalationLevel: ticket.escalationLevel || 'critical',
+        channel: 'email',
+        recipient: 'onekalitkenneth@gmail.com',
+        emailSubject: `🚨 [RE-DISPATCH] Critical Incident Alert: Ticket ${ticket.ticketNumber} for ${ticket.organizationName}`,
+        timestamp: now,
+        status: 'delivered',
+        payloadSummary: `Re-dispatched high-urgency SES alert to Kenneth Onekalit (onekalitkenneth@gmail.com). Initiated by ${actor.name}.`,
+      },
+    ];
+
+    ticket.automatedRoutingDispatches = [
+      ...(ticket.automatedRoutingDispatches || []),
+      ...dispatches,
+    ];
+
+    ticket.messages.push({
+      id: 'msg_sys_' + Math.random().toString(36).substring(2, 9),
+      senderId: 'sys_router',
+      senderName: 'Automated Incident Router',
+      senderEmail: 'alerts@kero-saas.internal',
+      senderRole: 'system',
+      message: `🔔 Senior platform admin alert manually re-dispatched by ${actor.name}. Notification confirmed in Slack #platform-critical-incidents and email to onekalitkenneth@gmail.com.`,
+      timestamp: now,
+    });
+
+    ticket.updatedAt = now;
+    this.setStorageItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+    try {
+      emailService.notifyCriticalTicketEscalation(
+        ticket,
+        'onekalitkenneth@gmail.com',
+        'Kenneth Onekalit'
+      );
+    } catch (err) {
+      console.error('Error re-dispatching critical escalation email:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('invox:critical_incident_routed', {
+          detail: { ticket, dispatches },
+        })
+      );
+    }
+
+    this.addAuditLog({
+      organizationId: ticket.organizationId,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'SETTINGS_UPDATED',
+      resourceType: 'organization',
+      resourceId: ticket.organizationId,
+      status: 'success',
+      details: `Re-dispatched automated critical routing alerts for ticket ${ticket.ticketNumber} to Slack (#platform-critical-incidents) and Kenneth Onekalit`,
+    });
+
+    return true;
+  }
+
+  public simulateTenantSupportTicket(
+    tenantOrgId?: string,
+    forcedEscalation?: TicketEscalationLevel
+  ): SupportTicket {
+    const orgs = this.getInternalAllOrganizations();
+    const selectedOrg = tenantOrgId
+      ? orgs.find(o => o.id === tenantOrgId) || orgs[1]
+      : orgs[Math.floor(Math.random() * (orgs.length - 1)) + 1] || orgs[1];
+
+    const templates = [
+      {
+        category: 'slow_query_performance' as TicketCategory,
+        priority: 'urgent' as TicketPriority,
+        escalationLevel: 'critical' as TicketEscalationLevel,
+        subject: `🚨 [P0 CRITICAL] Database index lock & slow queries (410ms) in ${selectedOrg.name}`,
+        description: `Our accounting department cannot export the end-of-month statements because invoice queries are timing out (>400ms). Unindexed composite scan detected. Requires immediate platform engineering intervention.`,
+        message: `Hello Kenneth & Ops team, we are hitting severe latency timeouts on the /invoices collection. Finance leads are blocked from completing the tax closeout. Please inspect index status immediately.`,
+        tags: ['query-latency', 'sla-critical', 'firestore-index', 'p0-blocker'],
+      },
+      {
+        category: 'tenant_access_rbac' as TicketCategory,
+        priority: 'urgent' as TicketPriority,
+        escalationLevel: 'critical' as TicketEscalationLevel,
+        subject: `🚨 [CRITICAL] OAuth SSO token revocation failure for finance controllers`,
+        description: `Tenants in ${selectedOrg.name} are encountering HTTP 403 on Google Workspace drive export sync after Google OAuth credentials refresh. High business disruption.`,
+        message: `Platform Support: Our whole finance group is locked out of automatic Drive invoice syncing following today's corporate Google Workspace domain certificate rotation.`,
+        tags: ['oauth-sso', 'sla-critical', 'security-lockout'],
+      },
+      {
+        category: 'billing_invoicing' as TicketCategory,
+        priority: 'high' as TicketPriority,
+        escalationLevel: 'high' as TicketEscalationLevel,
+        subject: `Monthly subscription invoice query & automated bank receipt reconciliation`,
+        description: `We need an itemized A4 official receipt showing VAT breakdown for our monthly ${selectedOrg.plan.toUpperCase()} subscription to present to our corporate accounting auditor.`,
+        message: `Hi Kenneth, could you provide the clean A4 payment receipt for our recurring subscription charge? Our accounting department requires the cryptographic receipt hash and tax ID details.`,
+        tags: ['billing', 'a4-receipt', 'audit'],
+      },
+      {
+        category: 'drive_integration' as TicketCategory,
+        priority: 'medium' as TicketPriority,
+        escalationLevel: 'medium' as TicketEscalationLevel,
+        subject: `Google Drive auto-sync destination folder permissions update`,
+        description: `We are migrating our shared drives to a new Google Workspace organization unit and would like to confirm automated PDF backup sync behavior.`,
+        message: `Hi team, we updated our Google Drive root folder. Could you verify whether invoice PDFs are auto-uploading without requiring re-authentication?`,
+        tags: ['google-drive', 'cloud-sync'],
+      },
+      {
+        category: 'api_webhooks' as TicketCategory,
+        priority: 'low' as TicketPriority,
+        escalationLevel: 'low' as TicketEscalationLevel,
+        subject: `Webhook delivery retry policy for invoice.payment_cleared events`,
+        description: `We would like to configure automatic webhook retries with exponential backoff for incoming client payment notifications.`,
+        message: `Hello support, what is the default retry window when our endpoint returns HTTP 503 during our maintenance windows?`,
+        tags: ['webhooks', 'api-integration'],
+      },
+    ];
+
+    let chosen = templates[Math.floor(Math.random() * templates.length)];
+    if (forcedEscalation) {
+      const match = templates.find(t => t.escalationLevel === forcedEscalation);
+      if (match) chosen = match;
+    }
+
+    return this.createSupportTicket(
+      {
+        organizationId: selectedOrg.id,
+        organizationName: selectedOrg.name,
+        createdById: 'usr_tenant_' + selectedOrg.id,
+        createdByName: `${selectedOrg.name} Admin`,
+        createdByEmail: selectedOrg.email,
+        category: chosen.category,
+        priority: chosen.priority,
+        escalationLevel: forcedEscalation || chosen.escalationLevel,
+        subject: chosen.subject,
+        description: chosen.description,
+        tags: chosen.tags,
+      },
+      chosen.message
+    );
   }
 }
 

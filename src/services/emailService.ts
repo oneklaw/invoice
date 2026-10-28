@@ -1,4 +1,4 @@
-import { EmailNotification, EmailNotificationType, Invoice, OrganizationSettings } from '../types';
+import { EmailNotification, EmailNotificationType, Invoice, OrganizationSettings, SupportTicket } from '../types';
 
 const EMAILS_STORAGE_KEY = 'invox_saas_emails_v2';
 
@@ -38,7 +38,7 @@ const SEED_EMAILS: EmailNotification[] = [
     status: 'opened',
     openedAt: '2026-09-28T14:35:12Z',
     clickedAt: '2026-09-28T14:35:50Z',
-    deliveredVia: 'Invox Automated Mailer (Amazon SES / SMTP)',
+    deliveredVia: 'KERO INVOICE Automated Mailer (Amazon SES / SMTP)',
   },
   {
     id: 'eml_seed_002',
@@ -76,7 +76,7 @@ const SEED_EMAILS: EmailNotification[] = [
     sentAt: '2026-10-05T09:15:30Z',
     status: 'delivered',
     paymentUrl: '/pay/inv_apex_002',
-    deliveredVia: 'Invox Automated Mailer (Amazon SES / SMTP)',
+    deliveredVia: 'KERO INVOICE Automated Mailer (Amazon SES / SMTP)',
   },
 ];
 
@@ -213,7 +213,7 @@ class EmailService {
         <!-- Footer -->
         <div style="background: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">
           <p style="margin: 0 0 4px 0;">${org.legalName} · ${org.address.line1}, ${org.address.city} · Tax ID: ${org.taxId}</p>
-          <p style="margin: 0;">Sent automatically by Invox SaaS Notification Engine.</p>
+          <p style="margin: 0;">Sent automatically by KERO INVOICE SaaS Notification Engine.</p>
         </div>
       </div>
     `;
@@ -232,7 +232,7 @@ class EmailService {
       sentAt: new Date().toISOString(),
       status: 'delivered',
       paymentUrl: `/pay/${invoice.id}`,
-      deliveredVia: 'Invox Automated Mailer (Amazon SES / SMTP)',
+      deliveredVia: 'KERO INVOICE Automated Mailer (Amazon SES / SMTP)',
     };
 
     this.saveNotification(notification);
@@ -328,7 +328,7 @@ class EmailService {
         <!-- Footer -->
         <div style="background: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">
           <p style="margin: 0 0 4px 0;">${org.legalName} · ${org.address.line1}, ${org.address.city} · Tax ID: ${org.taxId}</p>
-          <p style="margin: 0;">Sent automatically by Invox SaaS Notification Engine.</p>
+          <p style="margin: 0;">Sent automatically by KERO INVOICE SaaS Notification Engine.</p>
         </div>
       </div>
     `;
@@ -346,7 +346,7 @@ class EmailService {
       bodyHtml,
       sentAt: new Date().toISOString(),
       status: 'delivered',
-      deliveredVia: 'Invox Automated Mailer (Amazon SES / SMTP)',
+      deliveredVia: 'KERO INVOICE Automated Mailer (Amazon SES / SMTP)',
     };
 
     this.saveNotification(notification);
@@ -402,7 +402,99 @@ class EmailService {
       bodyHtml,
       sentAt: new Date().toISOString(),
       status: 'delivered',
-      deliveredVia: 'Invox Automated Mailer (Amazon SES / SMTP)',
+      deliveredVia: 'KERO INVOICE Automated Mailer (Amazon SES / SMTP)',
+    };
+
+    this.saveNotification(notification);
+    this.broadcastEmailSent(notification);
+    return notification;
+  }
+
+  /**
+   * Automated critical incident notification dispatched to senior platform admins
+   */
+  public notifyCriticalTicketEscalation(
+    ticket: SupportTicket,
+    adminEmail: string = 'onekalitkenneth@gmail.com',
+    adminName: string = 'Kenneth Onekalit'
+  ): EmailNotification {
+    const id = 'eml_crit_' + Math.random().toString(36).substring(2, 9);
+    const subject = `🚨 [CRITICAL INCIDENT] Ticket ${ticket.ticketNumber} opened by ${ticket.organizationName} - Immediate Action Required`;
+    const previewText = `CRITICAL ESCALATION: ${ticket.subject} from tenant ${ticket.organizationName}. Immediate SLA response required (<30m).`;
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #0f172a; color: #f8fafc; border: 2px solid #ef4444; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.3);">
+        <div style="background: #ef4444; color: #ffffff; padding: 12px 24px; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
+          🚨 Automated Critical Escalation Router · SLA Window: &lt; 30 Mins
+        </div>
+        
+        <div style="padding: 24px 32px;">
+          <h2 style="color: #ffffff; margin: 0 0 8px 0; font-size: 20px;">Senior Platform Admin Incident Dispatch</h2>
+          <p style="color: #cbd5e1; margin: 0 0 20px 0; font-size: 14px;">
+            A support query with <strong>CRITICAL</strong> escalation level has been opened by tenant <strong>${ticket.organizationName}</strong> and automatically assigned to you.
+          </p>
+
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px; margin-bottom: 24px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e2e8f0;">
+              <tr style="border-bottom: 1px solid #334155;">
+                <td style="padding: 8px 0; color: #94a3b8; width: 140px;">Ticket Reference:</td>
+                <td style="padding: 8px 0; font-family: monospace; font-weight: bold; color: #a5b4fc;">${ticket.ticketNumber}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #334155;">
+                <td style="padding: 8px 0; color: #94a3b8;">Escalation Level:</td>
+                <td style="padding: 8px 0; font-weight: bold; color: #ef4444;">🔴 CRITICAL</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #334155;">
+                <td style="padding: 8px 0; color: #94a3b8;">Category:</td>
+                <td style="padding: 8px 0; text-transform: capitalize;">${ticket.category.replace(/_/g, ' ')}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #334155;">
+                <td style="padding: 8px 0; color: #94a3b8;">Tenant Org:</td>
+                <td style="padding: 8px 0; font-weight: 600;">${ticket.organizationName} (${ticket.organizationId})</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #334155;">
+                <td style="padding: 8px 0; color: #94a3b8;">Contact:</td>
+                <td style="padding: 8px 0;">${ticket.createdByName} (${ticket.createdByEmail})</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #94a3b8;">Subject:</td>
+                <td style="padding: 8px 0; font-weight: bold; color: #ffffff;">${ticket.subject}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background: #020617; border-left: 4px solid #ef4444; padding: 14px; border-radius: 4px; margin-bottom: 24px;">
+            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-family: monospace;">Tenant Query Details</p>
+            <p style="margin: 6px 0 0 0; color: #f1f5f9; font-size: 13px; line-height: 1.5; white-space: pre-wrap;">${ticket.description}</p>
+          </div>
+
+          <div style="text-align: center; margin: 28px 0 10px 0;">
+            <a href="#triage" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
+              Open Ticket in Support Ticket Center
+            </a>
+          </div>
+
+          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b; text-align: center;">
+            Automated Incident Router · Slack Sync: #platform-critical-incidents · Senior Staff Dispatch
+          </div>
+        </div>
+      </div>
+    `;
+
+    const notification: EmailNotification = {
+      id,
+      organizationId: ticket.organizationId,
+      invoiceId: ticket.id,
+      invoiceNumber: ticket.ticketNumber,
+      type: 'critical_ticket_escalation',
+      recipientEmail: adminEmail,
+      recipientName: adminName,
+      subject,
+      previewText,
+      bodyHtml,
+      sentAt: new Date().toISOString(),
+      status: 'delivered',
+      deliveredVia: 'KERO INVOICE Automated Mailer (Amazon SES / SMTP) + Slack Gateway',
     };
 
     this.saveNotification(notification);

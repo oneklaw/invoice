@@ -17,6 +17,7 @@ import {
 import { Client, Invoice, OrganizationSettings } from '../../types';
 import { storageService } from '../../services/storage';
 import { googleDriveService } from '../../services/googleDriveService';
+import { pdfExportService } from '../../services/pdfExportService';
 
 interface ClientPortalViewProps {
   clientId?: string;
@@ -97,10 +98,10 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const totalOutstanding = Math.max(0, totalBilled - totalPaid);
 
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
     setIsDownloadingBatch(true);
     try {
-      googleDriveService.downloadMergedInvoicesPdf(invoices, org);
+      await pdfExportService.exportMergedInvoicesPdf(invoices, org);
       storageService.recordClientActivity({
         organizationId: org.id,
         clientId: client.id,
@@ -110,22 +111,51 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
       });
     } catch (err) {
       console.error(err);
+      alert('Unable to generate merged invoices PDF.');
     } finally {
       setIsDownloadingBatch(false);
     }
   };
 
-  const handleDownloadSingle = (inv: Invoice) => {
-    googleDriveService.downloadMergedInvoicesPdf([inv], org);
-    storageService.recordClientActivity({
-      organizationId: org.id,
-      clientId: client.id,
-      clientName: client.name,
-      invoiceId: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      type: 'downloaded',
-      ipAddress: '198.51.100.82',
-    });
+  const handleDownloadSingle = async (inv: Invoice) => {
+    try {
+      await pdfExportService.exportInvoiceToA4Pdf(inv, org);
+      storageService.recordClientActivity({
+        organizationId: org.id,
+        clientId: client.id,
+        clientName: client.name,
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        type: 'downloaded',
+        ipAddress: '198.51.100.82',
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Unable to generate invoice PDF.');
+    }
+  };
+
+  const handleDownloadReceipt = async (invoiceNo: string) => {
+    const inv = invoices.find((i) => i.invoiceNumber === invoiceNo);
+    if (!inv) {
+      alert(`Invoice ${invoiceNo} record not found.`);
+      return;
+    }
+    try {
+      await pdfExportService.exportReceiptToA4Pdf(inv, org);
+      storageService.recordClientActivity({
+        organizationId: org.id,
+        clientId: client.id,
+        clientName: client.name,
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        type: 'downloaded',
+        ipAddress: '198.51.100.82',
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Unable to generate receipt PDF.');
+    }
   };
 
   return (
@@ -144,8 +174,14 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
               </button>
             )}
 
-            {org.clientPortalSettings?.logoUrl ? (
-              <img src={org.clientPortalSettings.logoUrl} alt={org.name} className="h-8 max-w-[120px] object-contain rounded" />
+            {org.clientPortalSettings?.logoUrl || org.logoUrl || '/kero-logo.png' ? (
+              <div className="h-8 max-w-[120px] bg-white rounded p-0.5 flex items-center justify-center shrink-0">
+                <img
+                  src={org.clientPortalSettings?.logoUrl || org.logoUrl || '/kero-logo.png'}
+                  alt={org.name}
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
             ) : (
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-xs shadow-sm"
@@ -183,10 +219,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 lg:p-8 space-y-8">
         {/* Welcome Client Banner */}
-        <div
-          className="p-6 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 relative overflow-hidden"
-          style={{ borderLeftColor: brandColor, borderLeftWidth: '6px' }}
-        >
+        <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/80 relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
@@ -257,7 +290,81 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
             <span className="text-xs text-slate-400 font-mono">{invoices.length} Statements</span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Smartphone Touch-Optimized Cards (< 640px) */}
+          <div className="block sm:hidden divide-y divide-slate-800/80 font-sans">
+            {invoices.length === 0 ? (
+              <div className="p-6 text-center text-slate-500 text-xs">
+                No invoices found for this account.
+              </div>
+            ) : (
+              invoices.map((inv) => (
+                <div key={`mob-portal-${inv.id}`} className="p-4 space-y-3 bg-slate-900/30">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-mono text-sm font-bold text-white">
+                        {inv.invoiceNumber}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        Due: <span className="text-slate-300 font-mono">{inv.dueDate}</span>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        inv.status === 'paid'
+                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                          : inv.status === 'overdue'
+                          ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
+                          : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60'
+                      }`}
+                    >
+                      {inv.status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/80">
+                    <span className="text-xs text-slate-400">Total Billed:</span>
+                    <span className="font-mono text-base font-black text-white">
+                      {inv.currency} {inv.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {onPreviewInvoice && (
+                      <button
+                        onClick={() => onPreviewInvoice(inv)}
+                        className="min-h-[44px] px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 active:scale-[0.98] transition-all"
+                      >
+                        <FileText className="w-4 h-4 text-slate-400" />
+                        <span>View</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleDownloadSingle(inv)}
+                      className="min-h-[44px] px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 active:scale-[0.98] transition-all"
+                    >
+                      <Download className="w-4 h-4 text-indigo-400" />
+                      <span>PDF</span>
+                    </button>
+
+                    {inv.status !== 'paid' && onOpenPayInvoice && (
+                      <button
+                        onClick={() => onOpenPayInvoice(inv)}
+                        className="col-span-2 min-h-[44px] px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98] transition-all"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        <span>Pay Online ({inv.currency} {inv.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })})</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table (>= 640px) */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 font-semibold select-none">
                 <tr>
@@ -344,7 +451,49 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
             <CreditCard className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Smartphone Payment Cards (< 640px) */}
+          <div className="block sm:hidden divide-y divide-slate-800/80 font-sans">
+            {payments.length === 0 ? (
+              <div className="p-6 text-center text-slate-500 text-xs">
+                No past payments recorded yet.
+              </div>
+            ) : (
+              payments.map((p, idx) => (
+                <div key={`mob-pay-${idx}`} className="p-4 space-y-3 bg-slate-900/30">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-mono text-sm font-bold text-white">{p.invoiceNo}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {new Date(p.date).toLocaleDateString()} · {p.method}
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Settled</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/80">
+                    <span className="text-xs text-slate-400">Amount Paid:</span>
+                    <span className="font-mono text-base font-black text-emerald-400">
+                      {client.currency} {p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => handleDownloadReceipt(p.invoiceNo)}
+                    className="w-full min-h-[44px] px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 active:scale-[0.98] transition-all"
+                  >
+                    <Receipt className="w-4 h-4 text-emerald-400" />
+                    <span>Download A4 Receipt</span>
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Payment Table (>= 640px) */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 font-semibold select-none">
                 <tr>
@@ -353,12 +502,13 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                   <th className="py-3 px-4">Payment Method</th>
                   <th className="py-3 px-4">Amount</th>
                   <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Receipt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono">
                 {payments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-500 font-sans">
+                    <td colSpan={6} className="py-6 text-center text-slate-500 font-sans">
                       No past payments recorded yet.
                     </td>
                   </tr>
@@ -378,6 +528,16 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Settled</span>
                         </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-sans">
+                        <button
+                          onClick={() => handleDownloadReceipt(p.invoiceNo)}
+                          className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          title="Generate Receipt"
+                        >
+                          <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Generate Receipt</span>
+                        </button>
                       </td>
                     </tr>
                   ))

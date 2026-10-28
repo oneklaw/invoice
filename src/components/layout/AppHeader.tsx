@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Globe, Building2, ShieldCheck, ChevronDown, Check, LogOut, ArrowLeftRight } from 'lucide-react';
+import { Plus, Globe, Building2, ShieldCheck, ChevronDown, Check, LogOut, ArrowLeftRight, Menu, X, Search } from 'lucide-react';
 import { Client, Invoice, OrganizationSettings, SupportedLanguage, User } from '../../types';
 import { translations } from '../../i18n/translations';
 import { GlobalSearchBar } from '../search/GlobalSearchBar';
@@ -24,6 +24,8 @@ interface AppHeaderProps {
   activeTab: string;
   onSelectTab: (tab: string) => void;
   onOpenCurrencyConverter?: () => void;
+  isMobileMenuOpen?: boolean;
+  onToggleMobileMenu?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -44,11 +46,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   activeTab,
   onSelectTab,
   onOpenCurrencyConverter,
+  isMobileMenuOpen,
+  onToggleMobileMenu,
 }) => {
   const t = translations[currentLang];
   const [showOrgMenu, setShowOrgMenu] = React.useState(false);
   const [showUserMenu, setShowUserMenu] = React.useState(false);
   const [showLangMenu, setShowLangMenu] = React.useState(false);
+  const [showMobileSearch, setShowMobileSearch] = React.useState(false);
 
   const languages: { code: SupportedLanguage; label: string; flag: string }[] = [
     { code: 'en', label: 'English', flag: 'US' },
@@ -61,37 +66,71 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between gap-8 px-6 py-3.5 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 text-slate-100 no-print">
-      {/* Zone 1: Brand title wordmark (single text element, no pills, no subtitles) */}
-      <div className="flex items-center gap-4 shrink-0">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-2 sm:gap-4 lg:gap-6 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 text-slate-100 no-print">
+      {/* Zone 1: Mobile Hamburger + Brand title wordmark with official KERO Logo */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Mobile Navigation Drawer Trigger */}
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="md:hidden flex items-center justify-center w-10 h-10 -ml-1 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 shrink-0"
+            aria-label={isMobileMenuOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
+            title="Navigation Menu"
+          >
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5 text-indigo-400" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </button>
+        )}
+
         <a
           href="#dashboard"
           onClick={(e) => {
             e.preventDefault();
             onSelectTab('dashboard');
           }}
-          className="text-lg font-bold tracking-tight text-white whitespace-nowrap hover:text-indigo-400 transition-colors"
+          className="flex items-center gap-2 text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap hover:opacity-95 transition-all group"
+          title="KERO INVOICE SaaS"
         >
-          Invox SaaS
+          <div className="relative flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 bg-white rounded-lg p-0.5 shadow-sm border border-slate-700/80 group-hover:border-indigo-400 transition-colors shrink-0 overflow-hidden">
+            <img
+              src="/kero-logo.png"
+              alt="KERO Logo"
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm sm:text-base font-extrabold tracking-tight text-white leading-tight flex items-center gap-1.5">
+              <span>KERO</span>
+              <span className="text-indigo-400">INVOICE</span>
+              <span className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
+                SaaS
+              </span>
+            </span>
+            <span className="text-[8px] font-mono tracking-wider text-slate-400 uppercase hidden lg:inline">
+              Technology · Inspirations · Solutions
+            </span>
+          </div>
         </a>
 
-        {/* Isolated Tenant Organization Badge */}
-        <div className="relative">
+        {/* Isolated Tenant Organization Badge (hidden on smallest screens to preserve viewport space) */}
+        <div className="relative hidden sm:block">
           <button
             onClick={() => {
               setShowOrgMenu(!showOrgMenu);
               setShowUserMenu(false);
               setShowLangMenu(false);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-lg transition-colors whitespace-nowrap shrink-0 group"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-lg transition-colors whitespace-nowrap shrink-0 group"
             title="Inspect Tenant Data Isolation & Boundary"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="max-w-[130px] truncate text-slate-200 font-semibold">{currentOrg.name}</span>
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono text-emerald-300 bg-emerald-950/60 border border-emerald-800/50 rounded">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Isolated
-            </span>
+            <span className="max-w-[110px] sm:max-w-[130px] truncate text-slate-200 font-semibold">{currentOrg.name}</span>
+            <span className="text-[11px] text-slate-400 font-normal">·</span>
+            <span className="text-[11px] text-emerald-400 font-medium hidden md:inline">Isolated</span>
           </button>
 
           {showOrgMenu && (
@@ -148,25 +187,47 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
 
-      {/* Global Full-Text Indexed Search Bar */}
-      <GlobalSearchBar
-        invoices={invoices}
-        clients={clients}
-        orgId={currentOrg.id}
-        onSelectInvoice={onSelectInvoice}
-        onSelectClient={onSelectClient}
-      />
+      {/* Global Full-Text Indexed Search Bar (Responsive Desktop & Mobile Toggle) */}
+      <div className="hidden md:flex flex-1 max-w-xs lg:max-w-md mx-2">
+        <GlobalSearchBar
+          invoices={invoices}
+          clients={clients}
+          orgId={currentOrg.id}
+          onSelectInvoice={onSelectInvoice}
+          onSelectClient={onSelectClient}
+        />
+      </div>
+
+      {/* Mobile Search Overlay Modal */}
+      {showMobileSearch && (
+        <div className="md:hidden fixed inset-x-2 top-2 z-50 bg-slate-900 border border-indigo-500/80 rounded-xl shadow-2xl p-2.5 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex-1">
+            <GlobalSearchBar
+              invoices={invoices}
+              clients={clients}
+              orgId={currentOrg.id}
+              onSelectInvoice={(id) => {
+                setShowMobileSearch(false);
+                onSelectInvoice(id);
+              }}
+              onSelectClient={(id) => {
+                setShowMobileSearch(false);
+                onSelectClient(id);
+              }}
+            />
+          </div>
+          <button
+            onClick={() => setShowMobileSearch(false)}
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+            aria-label="Close search"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Zone 2: 4-5 clean single-line nav links with hover underlines */}
       <nav className="hidden xl:flex items-center gap-6 text-sm font-medium text-slate-400">
-        <button
-          onClick={() => onSelectTab('dashboard')}
-          className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'dashboard' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : ''
-          }`}
-        >
-          {t.dashboard}
-        </button>
         <button
           onClick={() => onSelectTab('invoices')}
           className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
@@ -176,33 +237,50 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           {t.invoices}
         </button>
         <button
+          onClick={() => onSelectTab('clients')}
+          className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
+            activeTab === 'clients' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : ''
+          }`}
+        >
+          {t.clients}
+        </button>
+        <button
+          onClick={() => onSelectTab('dashboard')}
+          className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
+            activeTab === 'dashboard' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : ''
+          }`}
+        >
+          {t.dashboard}
+        </button>
+        <button
+          onClick={() => onSelectTab('saas-revenue')}
+          className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
+            activeTab === 'saas-revenue' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : ''
+          }`}
+        >
+          Tenants & Support
+        </button>
+        <button
           onClick={() => onSelectTab('branding')}
           className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
             activeTab === 'branding' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : ''
           }`}
         >
-          {t.brandingSettings}
-        </button>
-        <button
-          onClick={() => onSelectTab('billing')}
-          className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'billing' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : ''
-          }`}
-        >
-          {t.billingSubscription}
-        </button>
-        <button
-          onClick={() => onSelectTab('api')}
-          className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'api' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : ''
-          }`}
-        >
-          {t.apiSecurity}
+          Branding & Theme
         </button>
       </nav>
 
       {/* Zone 3: Primary Action + Controls */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* Mobile Search Trigger Icon */}
+        <button
+          onClick={() => setShowMobileSearch(true)}
+          className="md:hidden flex items-center justify-center min-h-[38px] min-w-[38px] text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-lg transition-colors"
+          title="Search invoices, clients, items"
+          aria-label="Open search bar"
+        >
+          <Search className="w-4 h-4 text-slate-400" />
+        </button>
         {/* World Currencies & FX Rates */}
         {onOpenCurrencyConverter && (
           <button
@@ -299,7 +377,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   onClick={() => {
                     if (confirm('Clear all cached data and restore clean slate?')) {
                       storageService.purgeAllDemoData();
-                      window.location.reload();
+                      onLogout();
                     }
                   }}
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Users, Plus, Mail, Building, MapPin, DollarSign, X, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { Users, Plus, Mail, Building, MapPin, DollarSign, X, FileSpreadsheet, Trash2, Download } from 'lucide-react';
 import { Client, OrganizationSettings, User } from '../../types';
 import { storageService } from '../../services/storage';
+import { pdfExportService } from '../../services/pdfExportService';
 import { GoogleSheetsExportModal } from './GoogleSheetsExportModal';
 
 interface ClientManagerViewProps {
@@ -69,6 +70,28 @@ export const ClientManagerView: React.FC<ClientManagerViewProps> = ({
     }
   };
 
+  const handleExportCsv = () => {
+    if (clients.length === 0) {
+      alert('No clients available in directory to export.');
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    const filename = `Clients_Export_${org.slug || 'tenant'}_${today}.csv`;
+    pdfExportService.exportClientsToCsv(clients, filename);
+
+    storageService.addAuditLog({
+      organizationId: org.id,
+      actorId: currentUser.id,
+      actorName: currentUser.name,
+      actorEmail: currentUser.email,
+      actorRole: currentUser.role,
+      action: 'DATA_EXPORTED',
+      resourceType: 'report',
+      status: 'success',
+      details: `Exported ${clients.length} clients to CSV spreadsheet (${filename})`,
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
@@ -80,6 +103,15 @@ export const ClientManagerView: React.FC<ClientManagerViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+          <button
+            onClick={handleExportCsv}
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 hover:text-white border border-slate-700 rounded-lg shadow-sm transition-colors whitespace-nowrap cursor-pointer"
+            title="Export all client profiles for the current tenant to CSV"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span>Export to CSV</span>
+          </button>
+
           <button
             onClick={() => setShowExportModal(true)}
             className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-700/60 rounded-lg shadow-sm transition-colors whitespace-nowrap cursor-pointer"

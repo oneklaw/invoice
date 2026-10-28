@@ -228,6 +228,7 @@ export interface AuditLog {
     | 'INVOICE_PAID' 
     | 'INVOICE_VOIDED' 
     | 'USER_INVITED' 
+    | 'USER_REMOVED'
     | 'ROLE_CHANGED' 
     | 'SETTINGS_UPDATED' 
     | 'SUBSCRIPTION_UPGRADED' 
@@ -293,7 +294,7 @@ export interface CacheMetrics {
   totalSizeBytes: number;
 }
 
-export type EmailNotificationType = 'invoice_generated' | 'payment_received' | 'payment_reminder' | 'invoice_voided';
+export type EmailNotificationType = 'invoice_generated' | 'payment_received' | 'payment_reminder' | 'invoice_voided' | 'critical_ticket_escalation';
 export type EmailDeliveryStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced';
 
 export interface EmailNotification {
@@ -372,6 +373,9 @@ export interface InventoryItem {
   reorderQuantity: number;
   lastRestockedAt?: string;
   createdAt: string;
+  addedBy?: string;
+  addedById?: string;
+  notes?: string;
 }
 
 export interface StockMovement {
@@ -523,5 +527,69 @@ export interface TenantQueryLog {
   };
   resolutionStatus?: 'open' | 'investigating' | 'resolved';
 }
+
+// Multi-Tenant Support Ticket System
+export type TicketPriority = 'urgent' | 'high' | 'medium' | 'low';
+export type TicketEscalationLevel = 'low' | 'medium' | 'high' | 'critical';
+export type TicketStatus = 'open' | 'in_progress' | 'waiting_on_tenant' | 'resolved' | 'closed';
+export type TicketCategory =
+  | 'billing_invoicing'
+  | 'slow_query_performance'
+  | 'tenant_access_rbac'
+  | 'drive_integration'
+  | 'api_webhooks'
+  | 'general_inquiry';
+
+export interface AutomatedNotificationDispatch {
+  id: string;
+  ticketId: string;
+  ticketNumber: string;
+  escalationLevel: TicketEscalationLevel;
+  channel: 'slack' | 'email';
+  recipient: string;
+  timestamp: string;
+  status: 'dispatched' | 'delivered';
+  payloadSummary: string;
+  slackChannel?: string;
+  emailSubject?: string;
+}
+
+export interface TicketMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderEmail: string;
+  senderRole: 'super_admin' | 'tenant_admin' | 'system';
+  message: string;
+  timestamp: string;
+  isInternalNote?: boolean;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticketNumber: string;
+  organizationId: string;
+  organizationName: string;
+  createdById: string;
+  createdByName: string;
+  createdByEmail: string;
+  category: TicketCategory;
+  priority: TicketPriority;
+  escalationLevel: TicketEscalationLevel;
+  status: TicketStatus;
+  subject: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  assignedAdminName?: string;
+  assignedAdminEmail?: string;
+  messages: TicketMessage[];
+  tags: string[];
+  resolvedAt?: string;
+  resolutionSummary?: string;
+  automatedRoutingTriggered?: boolean;
+  automatedRoutingDispatches?: AutomatedNotificationDispatch[];
+}
+
 
 

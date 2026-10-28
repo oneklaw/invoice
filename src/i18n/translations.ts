@@ -72,7 +72,7 @@ export interface Translations {
 
 export const translations: Record<SupportedLanguage, Translations> = {
   en: {
-    appName: "Invox SaaS",
+    appName: "KERO INVOICE SaaS",
     tagline: "Enterprise Multi-Tenant Invoicing Platform",
     dashboard: "Dashboard",
     invoices: "Invoices",
@@ -135,7 +135,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     cacheHitRatio: "Cache Hit Ratio"
   },
   es: {
-    appName: "Invox SaaS",
+    appName: "KERO INVOICE SaaS",
     tagline: "Plataforma de Facturación Multi-Inquilino",
     dashboard: "Panel Principal",
     invoices: "Facturas",
@@ -198,7 +198,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     cacheHitRatio: "Acierto de Caché"
   },
   fr: {
-    appName: "Invox SaaS",
+    appName: "KERO INVOICE SaaS",
     tagline: "Plateforme de Facturation Multi-Entreprise",
     dashboard: "Tableau de Bord",
     invoices: "Factures",
@@ -261,7 +261,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     cacheHitRatio: "Taux de Succès Cache"
   },
   de: {
-    appName: "Invox SaaS",
+    appName: "KERO INVOICE SaaS",
     tagline: "Enterprise Rechnungsplattform",
     dashboard: "Übersicht",
     invoices: "Rechnungen",
@@ -324,7 +324,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     cacheHitRatio: "Cache-Trefferquote"
   },
   ja: {
-    appName: "Invox SaaS",
+    appName: "KERO INVOICE SaaS",
     tagline: "エンタープライズ マルチテナント請求管理",
     dashboard: "ダッシュボード",
     invoices: "請求書一覧",
@@ -387,7 +387,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     cacheHitRatio: "キャッシュヒット率"
   },
   ar: {
-    appName: "Invox SaaS",
+    appName: "KERO INVOICE SaaS",
     tagline: "منصة الفواتير السحابية متعددة المؤسسات",
     dashboard: "لوحة التحكم",
     invoices: "الفواتير",
@@ -450,7 +450,7 @@ export const translations: Record<SupportedLanguage, Translations> = {
     cacheHitRatio: "نسبة استجابة الكاش"
   },
   sw: {
-    appName: "Invox SaaS",
+    appName: "KERO INVOICE SaaS",
     tagline: "Mfumo wa Kisasa wa Ankara kwa Mashirika",
     dashboard: "Dashibodi",
     invoices: "Ankara",

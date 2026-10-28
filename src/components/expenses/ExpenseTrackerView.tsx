@@ -20,6 +20,10 @@ import {
 } from 'lucide-react';
 import { Expense, OrganizationSettings, User } from '../../types';
 import { storageService } from '../../services/storage';
+import {
+  ExpenseKpiDrilldownModal,
+  ExpenseDrilldownType,
+} from './ExpenseKpiDrilldownModal';
 
 interface ExpenseTrackerViewProps {
   org: OrganizationSettings;
@@ -36,6 +40,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [drilldownType, setDrilldownType] = useState<ExpenseDrilldownType | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -242,6 +247,21 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     return expenses.filter((e) => e.isRecurring).reduce((acc, curr) => acc + curr.amount, 0);
   }, [expenses]);
 
+  const topCostCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of expenses) {
+      map[e.category] = (map[e.category] || 0) + e.amount;
+    }
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    return entries.length > 0 ? entries[0] : ['None', 0];
+  }, [expenses]);
+
+  const speechExpensesCount = useMemo(() => {
+    return expenses.filter(
+      (e) => e.notes && (e.notes.toLowerCase().includes('speech') || e.notes.toLowerCase().includes('dictat'))
+    ).length;
+  }, [expenses]);
+
   const handleExportCsv = () => {
     const headers = ['Date,Title,Category,Amount,Currency,Vendor,Recurring,Notes'];
     const rows = filteredExpenses.map(
@@ -302,55 +322,124 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 1: Total Expenses */}
+        <div
+          onClick={() => setDrilldownType('total')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-emerald-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view itemized disbursements ledger"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Total Expenses</span>
-            <DollarSign className="w-4 h-4 text-emerald-400" />
+            <span className="group-hover:text-slate-300 font-medium">Total Expenses</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('total');
+              }}
+              className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all border border-emerald-500/20"
+              title="Drill down into total expenses"
+            >
+              <DollarSign className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-white">
+          <div className="text-2xl font-bold font-mono text-white group-hover:text-emerald-300 transition-colors">
             {org.currency} {totalExpenseAmount.toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-500">
-            Across {expenses.length} operational disbursements
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span>Across {expenses.length} operational disbursements</span>
+            <span className="text-emerald-400 group-hover:translate-x-0.5 transition-transform font-medium">Details →</span>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 2: Recurring Subscriptions */}
+        <div
+          onClick={() => setDrilldownType('recurring')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-indigo-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view recurring subscriptions & commitments"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Recurring Subscriptions</span>
-            <Repeat className="w-4 h-4 text-indigo-400" />
+            <span className="group-hover:text-slate-300 font-medium">Recurring Subscriptions</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('recurring');
+              }}
+              className="p-1 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all border border-indigo-500/20"
+              title="Drill down into recurring subscriptions"
+            >
+              <Repeat className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-indigo-300">
+          <div className="text-2xl font-bold font-mono text-indigo-300 group-hover:text-indigo-200 transition-colors">
             {org.currency} {recurringMonthlyTotal.toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-500">
-            Monthly automated commitments
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span>Monthly automated commitments</span>
+            <span className="text-indigo-400 group-hover:translate-x-0.5 transition-transform font-medium">Details →</span>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 3: Hands-Free Speech API & Smart Entries */}
+        <div
+          onClick={() => setDrilldownType('dictation')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-rose-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-rose-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view dictated and smart-parsed expenses"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Hands-Free Speech API</span>
-            <Mic className="w-4 h-4 text-rose-400" />
+            <span className="group-hover:text-slate-300 font-medium">Hands-Free Speech API</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('dictation');
+              }}
+              className="p-1 rounded-lg bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20 group-hover:scale-110 transition-all border border-rose-500/20"
+              title="Drill down into speech-dictated expenses"
+            >
+              <Mic className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-rose-400">
-            Active
+          <div className="text-2xl font-bold font-mono text-rose-400 group-hover:text-rose-300 transition-colors flex items-center gap-2">
+            <span>Active</span>
+            <span className="text-xs font-normal text-slate-400 font-mono">({speechExpensesCount} logged)</span>
           </div>
-          <div className="text-[11px] text-slate-500">
-            Real-time acoustic speech parser
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span>Real-time acoustic speech parser</span>
+            <span className="text-rose-400 group-hover:translate-x-0.5 transition-transform font-medium">Details →</span>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 4: Top Cost Category */}
+        <div
+          onClick={() => setDrilldownType('category')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-amber-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view category allocations & budget matrix"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Top Cost Category</span>
-            <Tag className="w-4 h-4 text-amber-400" />
+            <span className="group-hover:text-slate-300 font-medium">Top Cost Category</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('category');
+              }}
+              className="p-1 rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 group-hover:scale-110 transition-all border border-amber-500/20"
+              title="Drill down into category breakdown"
+            >
+              <Tag className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-amber-300">
-            Hardware
+          <div className="text-2xl font-bold font-mono text-amber-300 group-hover:text-amber-200 transition-colors truncate">
+            {topCostCategory[0]}
           </div>
-          <div className="text-[11px] text-slate-500">
-            Workstations & rack servers
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span className="truncate">{org.currency} {Number(topCostCategory[1]).toLocaleString()} allocation</span>
+            <span className="text-amber-400 group-hover:translate-x-0.5 transition-transform font-medium shrink-0 ml-1">Details →</span>
           </div>
         </div>
       </div>
@@ -678,6 +767,18 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* KPI Drilldown Popup Modal */}
+      <ExpenseKpiDrilldownModal
+        isOpen={drilldownType !== null}
+        onClose={() => setDrilldownType(null)}
+        type={drilldownType || 'total'}
+        expenses={expenses}
+        org={org}
+        currentUser={currentUser}
+        onDeleteExpense={handleDeleteExpense}
+        onOpenAddModal={() => setShowAddModal(true)}
+      />
     </div>
   );
 };

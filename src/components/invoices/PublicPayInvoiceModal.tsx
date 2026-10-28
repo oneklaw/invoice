@@ -75,10 +75,10 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden text-slate-100 my-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-950/40">
           <div>
             <div className="text-[11px] font-mono text-indigo-400 uppercase tracking-wider">
               Secure Client Payment Portal
@@ -158,10 +158,10 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
                     setShowReceiptModal(true);
                   }
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all"
+                className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
               >
                 <Receipt className="w-4 h-4" />
-                <span>Generate Clean A4 Receipt</span>
+                <span>Generate Receipt</span>
               </button>
 
               <button
@@ -263,9 +263,9 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
                 <button
                   type="submit"
                   disabled={isProcessing}
-                  className="w-full mt-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+                  className="w-full mt-2 min-h-[44px] py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5" />
+                  <Lock className="w-4 h-4" />
                   <span>Authorize & Pay {invoice.currency} {invoice.totalAmount.toLocaleString()}</span>
                 </button>
               </div>
@@ -299,7 +299,7 @@ export const PublicPayInvoiceModal: React.FC<PublicPayInvoiceModalProps> = ({
                     onPaymentSuccess();
                     setIsCompleted(true);
                   }}
-                  className="w-full mt-2 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs font-semibold transition-colors"
+                  className="w-full mt-2 min-h-[44px] py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 border border-slate-700 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   Confirm Wire Transfer Initiated
                 </button>

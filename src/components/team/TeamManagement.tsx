@@ -11,6 +11,7 @@ import {
   CreditCard,
   FileText,
   Eye,
+  Trash2,
 } from 'lucide-react';
 import { OrganizationSettings, User, UserRole } from '../../types';
 import { storageService } from '../../services/storage';
@@ -20,6 +21,29 @@ interface TeamManagementProps {
   currentUser: User;
   onRefresh: () => void;
 }
+
+const roleLabels: Record<UserRole, { title: string; desc: string }> = {
+  super_admin: {
+    title: 'Super Admin',
+    desc: 'Platform-level root authority, cross-tenant administration, system overrides.',
+  },
+  org_admin: {
+    title: 'Org Admin',
+    desc: 'Full administrative control of this tenant organization, billing, and team.',
+  },
+  billing_manager: {
+    title: 'Billing Manager',
+    desc: 'Manages Stripe & VISA subscriptions, receipts, bank coordinates, and invoices.',
+  },
+  invoice_editor: {
+    title: 'Invoice Editor',
+    desc: 'Generates, modifies, sends, and voids customer invoices and client profiles.',
+  },
+  viewer: {
+    title: 'Viewer',
+    desc: 'Read-only access to customer invoices, balances, and reports.',
+  },
+};
 
 export const TeamManagement: React.FC<TeamManagementProps> = ({
   org,
@@ -34,18 +58,23 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const canManageTeam = ['super_admin', 'org_admin'].includes(currentUser.role);
+  const isSuperAdmin = currentUser.role === 'super_admin';
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail || !inviteName) return;
 
-    storageService.inviteUser(inviteEmail, inviteName, inviteRole, org.id, currentUser);
-    setShowInviteModal(false);
-    setInviteName('');
-    setInviteEmail('');
-    setSuccessMsg(`Invitation dispatched to ${inviteEmail} with role '${inviteRole}'.`);
-    setTimeout(() => setSuccessMsg(null), 4000);
-    onRefresh();
+    try {
+      storageService.inviteUser(inviteEmail, inviteName, inviteRole, org.id, currentUser);
+      setShowInviteModal(false);
+      setInviteName('');
+      setInviteEmail('');
+      setSuccessMsg(`Successfully added staff member ${inviteName} (${inviteEmail}) as '${roleLabels[inviteRole]?.title || inviteRole}'.`);
+      setTimeout(() => setSuccessMsg(null), 4500);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Error inviting user');
+    }
   };
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
@@ -55,30 +84,27 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     }
 
     storageService.updateUserRole(userId, newRole, org.id, currentUser);
+    setSuccessMsg(`Role updated to '${roleLabels[newRole]?.title || newRole}'.`);
+    setTimeout(() => setSuccessMsg(null), 3000);
     onRefresh();
   };
 
-  const roleLabels: Record<UserRole, { title: string; desc: string }> = {
-    super_admin: {
-      title: 'Super Admin',
-      desc: 'Platform-level root authority, cross-tenant administration, system overrides.',
-    },
-    org_admin: {
-      title: 'Org Admin',
-      desc: 'Full administrative control of this tenant organization, billing, and team.',
-    },
-    billing_manager: {
-      title: 'Billing Manager',
-      desc: 'Manages Stripe & VISA subscriptions, receipts, bank coordinates, and invoices.',
-    },
-    invoice_editor: {
-      title: 'Invoice Editor',
-      desc: 'Generates, modifies, sends, and voids customer invoices and client profiles.',
-    },
-    viewer: {
-      title: 'Viewer',
-      desc: 'Read-only access to customer invoices, balances, and reports.',
-    },
+  const handleRemoveUser = (targetUser: User) => {
+    if (targetUser.id === currentUser.id) {
+      alert('You cannot remove your own active account.');
+      return;
+    }
+
+    if (confirm(`Remove staff member ${targetUser.name} (${targetUser.email}) from ${org.name}? They will lose access to this organization immediately.`)) {
+      try {
+        storageService.removeUserFromOrg(targetUser.id, org.id, currentUser);
+        setSuccessMsg(`Removed ${targetUser.name} from ${org.name}.`);
+        setTimeout(() => setSuccessMsg(null), 4000);
+        onRefresh();
+      } catch (err: any) {
+        alert(err.message || 'Error removing staff member');
+      }
+    }
   };
 
   const permissionsMatrix = [
@@ -134,7 +160,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
               <th className="py-3 px-6">User</th>
               <th className="py-3 px-4">Role & Scope</th>
               <th className="py-3 px-4">Joined Date</th>
-              <th className="py-3 px-6 text-right">Assign Role</th>
+              <th className="py-3 px-6 text-right">Role & Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
@@ -165,21 +191,34 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                   {new Date(user.createdAt).toLocaleDateString()}
                 </td>
                 <td className="py-3.5 px-6 text-right">
-                  {canManageTeam ? (
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
-                      className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="super_admin">Super Admin</option>
-                      <option value="org_admin">Org Admin</option>
-                      <option value="billing_manager">Billing Manager</option>
-                      <option value="invoice_editor">Invoice Editor</option>
-                      <option value="viewer">Viewer</option>
-                    </select>
-                  ) : (
-                    <span className="text-slate-500 text-xs">Read-only</span>
-                  )}
+                  <div className="flex items-center justify-end gap-2">
+                    {canManageTeam ? (
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                        className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      >
+                        {isSuperAdmin && <option value="super_admin">Super Admin</option>}
+                        <option value="org_admin">Org Admin</option>
+                        <option value="billing_manager">Billing Manager</option>
+                        <option value="invoice_editor">Invoice Editor</option>
+                        <option value="viewer">Viewer</option>
+                      </select>
+                    ) : (
+                      <span className="text-slate-500 text-xs">Read-only</span>
+                    )}
+
+                    {canManageTeam && user.id !== currentUser.id && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveUser(user)}
+                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
+                        title={`Remove ${user.name} from staff`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -278,6 +317,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                   onChange={(e) => setInviteRole(e.target.value as UserRole)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
                 >
+                  {isSuperAdmin && <option value="super_admin">Super Admin (Platform Root)</option>}
                   <option value="org_admin">Org Admin (Full management)</option>
                   <option value="billing_manager">Billing Manager (Finance & Cards)</option>
                   <option value="invoice_editor">Invoice Editor (Create & send invoices)</option>

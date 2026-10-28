@@ -17,7 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Client, Invoice, InvoiceItem, OrganizationSettings, User } from '../../types';
-import { storageService } from '../../services/storage';
+import { storageService, DEFAULT_ENTERPRISE_TERMS } from '../../services/storage';
 import { CurrencySelect } from '../currency/CurrencySelect';
 import { currencyService } from '../../services/currencyService';
 import { googleDriveService } from '../../services/googleDriveService';
@@ -84,6 +84,9 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   );
   const [poNumber, setPoNumber] = useState(initialInvoice?.poNumber || '');
   const [notes, setNotes] = useState(initialInvoice?.notes || '');
+  const [termsAndConditions, setTermsAndConditions] = useState(
+    initialInvoice?.termsAndConditions || org.invoiceTermsAndConditions || DEFAULT_ENTERPRISE_TERMS
+  );
   const [items, setItems] = useState<InvoiceItem[]>(
     initialInvoice?.items || [
       {
@@ -337,6 +340,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
       shippingFee: 0,
       totalAmount: grandTotal,
       notes: notes || undefined,
+      termsAndConditions: termsAndConditions.trim() || org.invoiceTermsAndConditions || DEFAULT_ENTERPRISE_TERMS,
       isRecurring,
       recurringInterval: isRecurring ? recurringInterval : undefined,
       recurringNextDate: nextDate,
@@ -837,14 +841,38 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 Payment Notes & Bank Instructions
               </label>
               <textarea
-                rows={3}
+                rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Specific instructions for client payment or PO delivery..."
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs text-white focus:outline-none focus:border-indigo-500"
               />
 
-              <div className="flex items-center gap-2">
+              {/* Commercial Terms & Conditions */}
+              <div className="space-y-1 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Commercial Terms & Conditions
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTermsAndConditions(org.invoiceTermsAndConditions || DEFAULT_ENTERPRISE_TERMS)}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+                    title="Reset to default commercial terms"
+                  >
+                    Reset to Default Terms
+                  </button>
+                </div>
+                <textarea
+                  rows={4}
+                  value={termsAndConditions}
+                  onChange={(e) => setTermsAndConditions(e.target.value)}
+                  placeholder="Terms & Conditions that apply to this invoice..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono text-[11px] leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id="taxBreakdown"

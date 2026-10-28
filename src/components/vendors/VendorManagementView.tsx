@@ -32,6 +32,10 @@ import {
   VendorPayment,
 } from '../../types';
 import { storageService } from '../../services/storage';
+import {
+  VendorKpiDrilldownModal,
+  VendorDrilldownType,
+} from './VendorKpiDrilldownModal';
 
 interface VendorManagementViewProps {
   org: OrganizationSettings;
@@ -47,6 +51,8 @@ export const VendorManagementView: React.FC<VendorManagementViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<
     'reconciliation' | 'history' | 'directory' | 'import'
   >('reconciliation');
+
+  const [drilldownType, setDrilldownType] = useState<VendorDrilldownType | null>(null);
 
   // Data states
   const [vendors, setVendors] = useState<Vendor[]>(storageService.getVendors(org.id));
@@ -493,59 +499,129 @@ WeWork Office Facilities Ltd,3100,GBP,2026-09-25,BACS-2026-WW-3033,completed,PO-
 
       {/* Global Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 1: Pending Payouts */}
+        <div
+          onClick={() => setDrilldownType('pending')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-amber-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view pending purchase orders & reconciliation queue"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Pending Payouts</span>
-            <Clock className="w-4 h-4 text-amber-400" />
+            <span className="group-hover:text-slate-300 font-medium">Pending Payouts</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('pending');
+              }}
+              className="p-1 rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 group-hover:scale-110 transition-all border border-amber-500/20"
+              title="Drill down into pending payouts"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-amber-400">
+          <div className="text-2xl font-bold font-mono text-amber-400 group-hover:text-amber-300 transition-colors">
             {pendingPayments.length}
           </div>
-          <div className="text-[11px] text-slate-500">
-            {org.currency}{' '}
-            {pendingPayments
-              .reduce((acc, curr) => acc + curr.totalAmount, 0)
-              .toLocaleString()}{' '}
-            awaiting bank reconciliation
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span className="truncate">
+              {org.currency}{' '}
+              {pendingPayments
+                .reduce((acc, curr) => acc + curr.totalAmount, 0)
+                .toLocaleString()}{' '}
+              awaiting bank reconciliation
+            </span>
+            <span className="text-amber-400 group-hover:translate-x-0.5 transition-transform font-medium shrink-0 ml-1">Details →</span>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 2: Total Disbursed (YTD) */}
+        <div
+          onClick={() => setDrilldownType('disbursed')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-emerald-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view settled disbursements ledger"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Total Disbursed (YTD)</span>
-            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <span className="group-hover:text-slate-300 font-medium">Total Disbursed (YTD)</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('disbursed');
+              }}
+              className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all border border-emerald-500/20"
+              title="Drill down into settled disbursements"
+            >
+              <TrendingUp className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">
+          <div className="text-2xl font-bold font-mono text-emerald-400 group-hover:text-emerald-300 transition-colors">
             {org.currency} {totalDisbursedYtd.toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-500">
-            Across {completedPayments.length} completed bank transfers
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span>Across {completedPayments.length} completed bank transfers</span>
+            <span className="text-emerald-400 group-hover:translate-x-0.5 transition-transform font-medium">Details →</span>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 3: Active Suppliers */}
+        <div
+          onClick={() => setDrilldownType('suppliers')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-indigo-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view supplier directory & ratings"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Active Suppliers</span>
-            <Building2 className="w-4 h-4 text-indigo-400" />
+            <span className="group-hover:text-slate-300 font-medium">Active Suppliers</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('suppliers');
+              }}
+              className="p-1 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all border border-indigo-500/20"
+              title="Drill down into supplier directory"
+            >
+              <Building2 className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-white">
+          <div className="text-2xl font-bold font-mono text-white group-hover:text-indigo-200 transition-colors">
             {vendors.length}
           </div>
-          <div className="text-[11px] text-slate-500">
-            Avg payment terms: Net 30
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span>Avg payment terms: Net 30</span>
+            <span className="text-indigo-400 group-hover:translate-x-0.5 transition-transform font-medium">Details →</span>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-1">
+        {/* Card 4: Avg Payout Size */}
+        <div
+          onClick={() => setDrilldownType('benchmarks')}
+          className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 rounded-xl p-4 space-y-1 transition-all cursor-pointer group shadow-sm hover:shadow-cyan-950/20"
+          role="button"
+          tabIndex={0}
+          title="Click to view treasury benchmarks & concentration analysis"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Avg Payout Size</span>
-            <DollarSign className="w-4 h-4 text-cyan-400" />
+            <span className="group-hover:text-slate-300 font-medium">Avg Payout Size</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrilldownType('benchmarks');
+              }}
+              className="p-1 rounded-lg bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:scale-110 transition-all border border-cyan-500/20"
+              title="Drill down into treasury benchmarks"
+            >
+              <DollarSign className="w-4 h-4" />
+            </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-cyan-300">
+          <div className="text-2xl font-bold font-mono text-cyan-300 group-hover:text-cyan-200 transition-colors">
             {org.currency} {avgDisbursement.toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-500">
-            Corporate treasury benchmark
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+            <span>Corporate treasury benchmark</span>
+            <span className="text-cyan-400 group-hover:translate-x-0.5 transition-transform font-medium">Details →</span>
           </div>
         </div>
       </div>
@@ -1446,6 +1522,20 @@ WeWork Office Facilities Ltd,3100,GBP,2026-09-25,BACS-2026-WW-3033,completed,PO-
           </div>
         </div>
       )}
+
+      {/* KPI Drilldown Popup Modal */}
+      <VendorKpiDrilldownModal
+        isOpen={drilldownType !== null}
+        onClose={() => setDrilldownType(null)}
+        type={drilldownType || 'pending'}
+        purchaseOrders={purchaseOrders}
+        payments={payments}
+        vendors={vendors}
+        org={org}
+        currentUser={currentUser}
+        onOpenReconcileModal={handleOpenReconcileModal}
+        onOpenAddSupplier={() => setShowAddSupplierModal(true)}
+      />
     </div>
   );
 };

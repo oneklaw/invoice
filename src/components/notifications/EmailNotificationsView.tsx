@@ -371,7 +371,7 @@ export const EmailNotificationsView: React.FC<EmailNotificationsViewProps> = ({
             {/* Email Meta bar */}
             <div className="px-6 py-3 bg-slate-950/60 border-b border-slate-800 text-xs text-slate-400 space-y-1">
               <div>To: <strong className="text-slate-200">{selectedEmail.recipientName}</strong> &lt;{selectedEmail.recipientEmail}&gt;</div>
-              <div>From: <strong className="text-slate-200">{org.name} Billing Engine</strong> &lt;notifications@{org.slug}.invox.io&gt;</div>
+              <div>From: <strong className="text-slate-200">{org.name} Billing Engine</strong> &lt;notifications@{org.slug}.kero.io&gt;</div>
               <div>Subject: <strong className="text-slate-200">{selectedEmail.subject}</strong></div>
             </div>
 

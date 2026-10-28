@@ -28,14 +28,20 @@ import {
   ArrowUpRight,
   Shield,
   Key,
+  LifeBuoy,
+  UserPlus,
+  Lock,
+  ArrowRight,
 } from 'lucide-react';
 import {
   OrganizationSettings,
   User,
   SaaSSubscriptionTransaction,
   TenantQueryLog,
+  UserRole,
 } from '../../types';
 import { storageService } from '../../services/storage';
+import { SupportTicketCenter } from './SupportTicketCenter';
 
 interface SaaSRevenueManagerViewProps {
   currentUser: User;
@@ -48,7 +54,12 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
   onRefresh,
   onSwitchTenant,
 }) => {
-  const [activeTab, setActiveTab] = useState<'revenue' | 'troubleshooting' | 'account'>('revenue');
+  const [activeTab, setActiveTab] = useState<'revenue' | 'troubleshooting' | 'support' | 'account'>('revenue');
+
+  // Support Tickets State
+  const [supportTicketsCount, setSupportTicketsCount] = useState<number>(
+    () => storageService.getSupportTickets().filter((t) => t.status === 'open' || t.status === 'in_progress').length
+  );
 
   // Multi-Tenant Revenue States
   const [tenants, setTenants] = useState<OrganizationSettings[]>(storageService.getSaaSTenants());
@@ -76,13 +87,74 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
   const [isDiagnosticRunning, setIsDiagnosticRunning] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<TenantQueryLog | null>(null);
 
+  // Super Admin & Troubleshooting Accounts
+  const [adminAccounts, setAdminAccounts] = useState<User[]>(() => storageService.getSuperAdminAccounts());
+  const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [newAccountEmail, setNewAccountEmail] = useState('');
+  const [newAccountRole, setNewAccountRole] = useState<UserRole>('super_admin');
+  const [newAccountTitle, setNewAccountTitle] = useState('SaaS Revenue & Tenant Query Specialist');
+
   // Success Feedback
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+
+  // Receive Tenant Payment Modal States
+  const [isReceivePaymentModalOpen, setIsReceivePaymentModalOpen] = useState(false);
+  const [receiveOrgId, setReceiveOrgId] = useState('');
+  const [receiveAmount, setReceiveAmount] = useState<number>(2.0);
+  const [receivePlanName, setReceivePlanName] = useState('Pro Tier ($2.00/mo)');
+  const [receiveGateway, setReceiveGateway] = useState('Stripe Visa Direct');
+  const [receiveReference, setReceiveReference] = useState('');
+
+  const handleOpenReceivePaymentModal = (tenant?: OrganizationSettings) => {
+    if (tenant) {
+      setReceiveOrgId(tenant.id);
+      setReceiveAmount(tenant.id === 'org_quantum_ai' ? 19.0 : 2.0);
+      setReceivePlanName(tenant.id === 'org_quantum_ai' ? 'Enterprise Pro Tier' : 'Pro Tier ($2.00/mo)');
+    } else if (tenants.length > 0) {
+      setReceiveOrgId(tenants[0].id);
+      setReceiveAmount(2.0);
+      setReceivePlanName('Pro Tier ($2.00/mo)');
+    }
+    setReceiveGateway('Stripe Visa Direct');
+    setReceiveReference(`REC-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`);
+    setIsReceivePaymentModalOpen(true);
+  };
+
+  const handleProcessReceivePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receiveOrgId) return;
+    const targetOrg = tenants.find((t) => t.id === receiveOrgId);
+    if (!targetOrg) return;
+
+    try {
+      storageService.receiveTenantPayment(
+        receiveOrgId,
+        receiveAmount,
+        receivePlanName,
+        receiveGateway,
+        receiveReference,
+        currentUser
+      );
+      refreshData();
+      setIsReceivePaymentModalOpen(false);
+      setActionSuccessMsg(
+        `Successfully received payment of $${receiveAmount.toFixed(2)} from ${targetOrg.name} via ${receiveGateway}!`
+      );
+      setTimeout(() => setActionSuccessMsg(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Error recording payment');
+    }
+  };
 
   const refreshData = () => {
     setTenants(storageService.getSaaSTenants());
     setTransactions(storageService.getSaaSRevenueTransactions());
     setQueryLogs(storageService.getTenantQueryLogs());
+    setSupportTicketsCount(
+      storageService.getSupportTickets().filter((t) => t.status === 'open' || t.status === 'in_progress').length
+    );
+    setAdminAccounts(storageService.getSuperAdminAccounts());
     if (onRefresh) onRefresh();
   };
 
@@ -220,9 +292,42 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `invox_saas_revenue_ledger_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `kero_saas_revenue_ledger_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleCreateTroubleshootingAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccountName.trim() || !newAccountEmail.trim()) return;
+
+    try {
+      const created = storageService.createTroubleshootingAccount(
+        {
+          name: newAccountName.trim(),
+          email: newAccountEmail.trim(),
+          role: newAccountRole,
+          title: newAccountTitle.trim(),
+        },
+        currentUser
+      );
+      refreshData();
+      setIsCreateAccountModalOpen(false);
+      setNewAccountName('');
+      setNewAccountEmail('');
+      setActionSuccessMsg(
+        `Successfully provisioned operations account for ${created.name} (${created.email}) with full troubleshooting & SaaS revenue privileges!`
+      );
+      setTimeout(() => setActionSuccessMsg(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Error creating account');
+    }
+  };
+
+  const handleSwitchAdminAccount = (targetUser: User) => {
+    storageService.setCurrentUserId(targetUser.id);
+    refreshData();
+    onRefresh?.();
   };
 
   return (
@@ -249,8 +354,16 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={() => handleOpenReceivePaymentModal()}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-lg text-xs shadow-sm transition-colors cursor-pointer"
+            title="Receive and settle subscription or contract payment from a tenant"
+          >
+            <DollarSign className="w-3.5 h-3.5" />
+            <span>Receive Payment</span>
+          </button>
+          <button
             onClick={refreshData}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors shadow-sm cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Refresh State</span>
@@ -272,10 +385,10 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
       )}
 
       {/* Primary Module Tabs */}
-      <div className="flex border-b border-slate-800 text-xs font-semibold gap-1">
+      <div className="flex border-b border-slate-800 text-xs font-semibold gap-1 overflow-x-auto pb-px">
         <button
           onClick={() => setActiveTab('revenue')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'revenue'
               ? 'border-indigo-500 text-white bg-indigo-500/10'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -290,7 +403,7 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
 
         <button
           onClick={() => setActiveTab('troubleshooting')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'troubleshooting'
               ? 'border-indigo-500 text-white bg-indigo-500/10'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -306,15 +419,35 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('support')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'support'
+              ? 'border-indigo-500 text-white bg-indigo-500/10'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <LifeBuoy className="w-3.5 h-3.5 text-sky-400" />
+          <span>Support Ticket Center</span>
+          {supportTicketsCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 font-mono">
+              {supportTicketsCount} Active
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setActiveTab('account')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'account'
               ? 'border-indigo-500 text-white bg-indigo-500/10'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <Shield className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Super Admin Account & Permissions</span>
+          <span>Operations Accounts & Permissions</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+            {adminAccounts.length} Staff
+          </span>
         </button>
       </div>
 
@@ -580,10 +713,18 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
 
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenReceivePaymentModal(t)}
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Receive or log payment from this tenant"
+                            >
+                              <DollarSign className="w-3 h-3" />
+                              <span>Receive</span>
+                            </button>
                             {isPro ? (
                               <button
                                 onClick={() => handleCollectSubscription(t)}
-                                className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded transition-colors"
+                                className="px-2.5 py-1 text-[11px] font-semibold bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 rounded transition-colors"
                                 title="Collect recurring Stripe subscription charge"
                               >
                                 Charge {fee}
@@ -980,35 +1121,53 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
       )}
 
       {/* ========================================================= */}
-      {/* TAB 3: SUPER ADMIN ACCOUNT & PERMISSIONS PROFILE */}
+      {/* TAB 3: TENANT SUPPORT TICKET CENTER */}
+      {/* ========================================================= */}
+      {activeTab === 'support' && (
+        <SupportTicketCenter
+          currentUser={currentUser}
+          onRefresh={refreshData}
+          onNavigateToTroubleshooting={(tenantId) => {
+            setActiveTab('troubleshooting');
+            if (tenantId) setQueryTenantFilter(tenantId);
+          }}
+          onNavigateToRevenue={(tenantId) => {
+            setActiveTab('revenue');
+            if (tenantId) setTenantSearch(tenantId);
+          }}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 4: SUPER ADMIN & OPERATIONS ACCOUNTS DIRECTORY */}
       {/* ========================================================= */}
       {activeTab === 'account' && (
         <div className="space-y-6">
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-6">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-600/30">
-                  KO
+                  {currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-white">Kenneth Onekalit</h2>
+                    <h2 className="text-base font-bold text-white">{currentUser.name}</h2>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase">
-                      Platform Super Admin
+                      {currentUser.role.replace('_', ' ')}
                     </span>
                   </div>
                   <div className="text-xs text-indigo-400 font-mono mt-0.5">
-                    onekalitkenneth@gmail.com · SaaS Owner & Chief Architect
+                    {currentUser.email} · SaaS Operations & Chief Architect
                   </div>
                 </div>
               </div>
 
-              <div className="text-right text-xs">
+              <div className="text-left sm:text-right text-xs space-y-0.5">
                 <span className="text-emerald-400 font-mono font-semibold flex items-center gap-1">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   MFA / 2FA Verified Active
                 </span>
-                <span className="text-[11px] text-slate-500 font-mono">Session ID: sess_ko_91823901</span>
+                <span className="text-[11px] text-slate-500 font-mono">Session ID: sess_{currentUser.id}</span>
               </div>
             </div>
 
@@ -1057,13 +1216,100 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
                 </div>
                 <div className="flex items-center gap-2 p-2 bg-slate-950/50 rounded border border-slate-800/80">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Switch into any tenant organization sandbox for audit & debugging</span>
+                  <span>Triage, respond to, and resolve incoming tenant support queries</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 bg-slate-950/50 rounded border border-slate-800/80">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>Upgrade/downgrade tenant plans or reset starter invoice quotas</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* SaaS Operations & Troubleshooting Team Accounts Directory */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-4 p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-indigo-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                    SaaS Troubleshooting & Revenue Operations Accounts
+                  </h3>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded">
+                    {adminAccounts.length} Active Accounts
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Manage accounts authorized to troubleshoot tenant database queries, collect MRR subscription billing, and resolve support tickets.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsCreateAccountModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer shrink-0"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Create Troubleshooting Account</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {adminAccounts.map((acc) => {
+                const isCurrent = acc.id === currentUser.id;
+                return (
+                  <div
+                    key={acc.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      isCurrent
+                        ? 'bg-indigo-950/40 border-indigo-500/50 shadow-md ring-1 ring-indigo-500/20'
+                        : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold text-xs">
+                          {acc.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <div>
+                          <div className="font-bold text-white text-xs flex items-center gap-2">
+                            <span>{acc.name}</span>
+                            {isCurrent && (
+                              <span className="text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded uppercase">
+                                Active Now
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-mono mt-0.5">{acc.email}</div>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                        {acc.role}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-mono">
+                        Created {new Date(acc.createdAt).toLocaleDateString()}
+                      </span>
+
+                      {isCurrent ? (
+                        <span className="text-indigo-400 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Current Session
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleSwitchAdminAccount(acc)}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <span>Switch to this Account</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1253,6 +1499,261 @@ export const SaaSRevenueManagerView: React.FC<SaaSRevenueManagerViewProps> = ({
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 3: CREATE OPERATIONS & TROUBLESHOOTING ACCOUNT */}
+      {/* ========================================================= */}
+      {isCreateAccountModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-slate-100 animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-indigo-400" />
+                <h3 className="text-sm font-bold text-white">
+                  Provision SaaS Operations & Troubleshooting Account
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCreateAccountModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTroubleshootingAccount} className="space-y-3.5 text-xs">
+              <div className="p-3 bg-indigo-950/40 border border-indigo-800/50 rounded-lg text-indigo-200 text-[11px] flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <span>
+                  This account will be authorized with full cross-tenant capabilities to troubleshoot Firestore queries, manage MRR subscription revenue collections, and respond to tenant support tickets.
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Operator Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Kenneth Onekalit (SaaS Operations)"
+                  value={newAccountName}
+                  onChange={(e) => setNewAccountName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Operator Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. troubleshoot@kero-saas.internal"
+                  value={newAccountEmail}
+                  onChange={(e) => setNewAccountEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">Assigned Role</label>
+                  <select
+                    value={newAccountRole}
+                    onChange={(e) => setNewAccountRole(e.target.value as any)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="super_admin">super_admin (Full Root)</option>
+                    <option value="billing_manager">billing_manager (Revenue)</option>
+                    <option value="org_admin">org_admin (Platform Staff)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Operational Title</label>
+                  <input
+                    type="text"
+                    value={newAccountTitle}
+                    onChange={(e) => setNewAccountTitle(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 space-y-2">
+                <span className="block text-[10px] font-mono uppercase text-slate-400">
+                  Pre-Authorized Platform Privileges:
+                </span>
+                <div className="space-y-1 text-[11px] text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Multi-tenant slow query troubleshooting & composite indexing</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Tenant subscription recurring charges collection & revenue metrics</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Support ticket center triage, responses & SLA resolution</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateAccountModalOpen(false)}
+                  className="px-3 py-1.5 text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+                >
+                  Provision Account
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Receive Tenant Payment Modal */}
+      {isReceivePaymentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden text-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-400 flex items-center justify-center">
+                  <DollarSign className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Receive Payment from Tenant</h3>
+                  <p className="text-[11px] text-slate-400">Record and settle tenant subscription fee or invoice</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsReceivePaymentModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleProcessReceivePayment} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">Select Tenant Organization</label>
+                <select
+                  value={receiveOrgId}
+                  onChange={(e) => {
+                    setReceiveOrgId(e.target.value);
+                    const sel = tenants.find((t) => t.id === e.target.value);
+                    if (sel) {
+                      setReceiveAmount(sel.id === 'org_quantum_ai' ? 19.0 : 2.0);
+                    }
+                  }}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                >
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.plan.toUpperCase()} · Tax ID: {t.taxId || 'N/A'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-medium">Payment Purpose / Plan</label>
+                  <select
+                    value={receivePlanName}
+                    onChange={(e) => {
+                      setReceivePlanName(e.target.value);
+                      if (e.target.value.includes('$2.00')) setReceiveAmount(2.0);
+                      if (e.target.value.includes('$19.00')) setReceiveAmount(19.0);
+                    }}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="Pro Tier ($2.00/mo)">Pro Tier ($2.00/mo)</option>
+                    <option value="Enterprise Pro ($19.00/mo)">Enterprise Pro ($19.00/mo)</option>
+                    <option value="Annual Enterprise Contract">Annual Enterprise Contract</option>
+                    <option value="Quota Overage & API Usage">Quota Overage & API Usage</option>
+                    <option value="Onboarding & Setup Fee">Onboarding & Setup Fee</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-medium">Amount Received (USD)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    value={receiveAmount}
+                    onChange={(e) => setReceiveAmount(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-medium">Payment Gateway / Method</label>
+                  <select
+                    value={receiveGateway}
+                    onChange={(e) => setReceiveGateway(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="Stripe Visa Direct">Stripe & Visa Direct</option>
+                    <option value="SWIFT / Bank Wire Transfer">SWIFT / Bank Wire Transfer</option>
+                    <option value="PayPal Business">PayPal Business</option>
+                    <option value="Corporate Check / Cash">Corporate Check / Remittance</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-medium">Reference / Transaction ID</label>
+                  <input
+                    type="text"
+                    required
+                    value={receiveReference}
+                    onChange={(e) => setReceiveReference(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g. WIRE-2026-092"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Platform Settlement Impact:</span>
+                </div>
+                <div>● Instantly records settled revenue in the SaaS Ledger.</div>
+                <div>● Extends tenant organization subscription active period by 30 days.</div>
+                <div>● Updates platform MRR and tenant payment records.</div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsReceivePaymentModalOpen(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>Confirm Payment Received</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

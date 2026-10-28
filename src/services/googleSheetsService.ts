@@ -118,7 +118,7 @@ export class GoogleSheetsService {
 
     // Summary Tab data
     const summaryRows = [
-      ['INVOX SAAS - FINANCIAL & CLIENT REPORT', ''],
+      ['KERO INVOICE SAAS - FINANCIAL & CLIENT REPORT', ''],
       ['Organization Name', org.name],
       ['Legal Entity', org.legalName || 'N/A'],
       ['Tax / VAT Identifier', org.taxId || 'N/A'],
@@ -134,7 +134,7 @@ export class GoogleSheetsService {
       ['Overdue Invoices Count', overdueInvoices.length],
       ['Overdue Receivables', `${org.currency} ${overdueAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
       ['', ''],
-      ['Report Generated From', 'Invox Enterprise Multi-Tenant Invoicing Platform'],
+      ['Report Generated From', 'KERO INVOICE SaaS Enterprise Platform'],
     ];
 
     // Client Directory Tab data

@@ -95,7 +95,7 @@ export const BillingSubscriptionModal: React.FC<BillingSubscriptionModalProps> =
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Upgrade to Invox Pro</h2>
+              <h2 className="text-base font-bold text-white">Upgrade to KERO INVOICE Pro</h2>
               <p className="text-xs text-slate-400">Unlock unlimited invoices and API access</p>
             </div>
           </div>

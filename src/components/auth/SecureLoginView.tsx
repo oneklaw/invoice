@@ -11,6 +11,7 @@ import {
   Fingerprint,
   RefreshCw,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { storageService } from '../../services/storage';
 import { User } from '../../types';
@@ -174,14 +175,22 @@ export const SecureLoginView: React.FC<SecureLoginViewProps> = ({ onLoginSuccess
       <div className="w-full max-w-md space-y-6 relative z-10 animate-in fade-in zoom-in-95 duration-200">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 mb-1 shadow-lg shadow-indigo-500/10">
-            <Lock className="w-6 h-6" />
+          <div className="inline-flex items-center justify-center p-2 rounded-2xl bg-white shadow-xl shadow-indigo-500/10 border border-slate-700/80 mb-1">
+            <img
+              src="/kero-logo.png"
+              alt="KERO Logo"
+              className="h-11 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Invox SaaS
+          <h1 className="text-2xl font-black tracking-tight text-white flex items-center justify-center gap-1.5">
+            <span>KERO</span>
+            <span className="text-indigo-400">INVOICE</span>
+            <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
+              SaaS
+            </span>
           </h1>
-          <p className="text-xs text-slate-400">
-            Secure Multi-Tenant Authentication & Access Control
+          <p className="text-xs text-slate-400 font-mono">
+            Technology · Inspirations · Solutions
           </p>
         </div>
 
@@ -282,50 +291,6 @@ export const SecureLoginView: React.FC<SecureLoginViewProps> = ({ onLoginSuccess
         ) : authMode === 'login' ? (
           /* Sign In Form */
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5 shadow-xl">
-            {/* Platform Super Admin Quick Access Card */}
-            <div className="bg-gradient-to-r from-indigo-950/80 via-slate-900 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-3.5 shadow-lg space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-400">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>Platform Super Admin</span>
-                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
-                        SaaS Lead
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      onekalitkenneth@gmail.com
-                    </div>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded">
-                  Revenue & Queries
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const result = storageService.loginAsSuperAdmin(rememberMe);
-                  if (result.user) {
-                    onLoginSuccess(result.user);
-                  }
-                }}
-                className="w-full py-2 px-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>One-Click Sign In as Kenneth (Super Admin)</span>
-              </button>
-
-              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono px-1">
-                <span>Manual: <strong>onekalitkenneth@gmail.com</strong></span>
-                <span>Pass: <strong>admin123</strong> (2FA: <strong>123456</strong>)</span>
-              </div>
-            </div>
-
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
@@ -394,7 +359,7 @@ export const SecureLoginView: React.FC<SecureLoginViewProps> = ({ onLoginSuccess
                   <Lock className="w-3.5 h-3.5" />
                 )}
                 <span>
-                  {cooldownRemaining > 0 ? `Locked (${cooldownRemaining}s)` : 'Authenticate to Invox'}
+                  {cooldownRemaining > 0 ? `Locked (${cooldownRemaining}s)` : 'Authenticate to KERO INVOICE'}
                 </span>
               </button>
 

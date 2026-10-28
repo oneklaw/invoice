@@ -153,21 +153,30 @@ export const CustomizationSettings: React.FC<CustomizationSettingsProps> = ({
               </div>
 
               <div className="space-y-2">
-                <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg cursor-pointer transition-colors border border-slate-700">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Logo Image</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                  />
-                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg cursor-pointer transition-colors border border-slate-700">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Logo Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, logoUrl: '/kero-logo.png' }))}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 text-xs font-medium rounded-lg border border-indigo-800 transition-colors cursor-pointer"
+                  >
+                    <span>Use KERO Official Logo</span>
+                  </button>
+                </div>
                 {formData.logoUrl && (
                   <button
                     type="button"
                     onClick={handleRemoveLogo}
-                    className="block text-[11px] text-rose-400 hover:text-rose-300 transition-colors"
+                    className="block text-[11px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
                   >
                     Remove Logo
                   </button>

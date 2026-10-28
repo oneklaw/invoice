@@ -84,7 +84,7 @@ class ApiSecurityService {
   public generateOAuthToken(clientId: string, scopes: string[]): OAuthToken {
     const randomHex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
     return {
-      accessToken: `invox_live_${randomHex}`,
+      accessToken: `kero_live_${randomHex}`,
       tokenType: 'Bearer',
       expiresIn: 3600, // 1 hour
       scope: scopes.join(' '),
